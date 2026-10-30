@@ -764,10 +764,7 @@
             return h + '</div></div>';
           }
           if (S.cat === 'tudo') {
-            h +=
-              '<section class="banner" aria-label="Destaque"><div class="txt"><small>Volta às aulas</small><h2>Kit escolar completo</h2><p>Escolha pronto ou monte do seu jeito. Entrega em até 3 dias úteis.</p><a class="btn" href="#montar">Montar meu kit</a></div>' +
-              art('kit', '#e08a2e') +
-              '</section>';
+            h += heroHTML();
             h +=
               '<a class="pillbar" href="#montar"><b>Voto Kit</b><span>Monte o kit do jeito que você quer</span>' +
               '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>';
@@ -801,6 +798,7 @@
                 'href="https://wa.me/' + WA + '" target="_blank" rel="noopener"'
               ) +
               '</div>';
+              h += adsHTML();
             var ofs = [
               'mochila-infantil',
               'vestido-infantil',
@@ -848,6 +846,74 @@
           }
           return h + '</div></div>';
         }
+            /* faixa de anúncios em movimento */
+function adsHTML() {
+  var l = P.slice()
+    .sort(function (a, b) {
+      return b.v - a.v;
+    })
+    .slice(0, 10);
+  function item(p, dup) {
+    return (
+      '<a class="ad" href="#produto-' +
+      p.id +
+      '"' +
+      (dup ? ' aria-hidden="true" tabindex="-1"' : '') +
+      '><div class="tile">' +
+      pic(p) +
+      (p.de ? '<span class="tag">' + off(p) + '% OFF</span>' : '') +
+      '</div><h3>' +
+      p.nome +
+      '</h3>' +
+      (p.de ? '<s>' + fmt(p.de) + '</s>' : '') +
+      '<div class="p">' +
+      priceHTML(p.preco) +
+      '</div><div class="fr">Entrega em até 3 dias úteis</div></a>'
+    );
+  }
+  return (
+    '<section class="ads" aria-label="Produtos em destaque"><div class="ads-h"><h2>Produtos em destaque</h2><a href="#" data-a="cat" data-v="top">Ver todos</a></div><div class="ads-view"><div class="ads-track" style="--dur:' +
+    l.length * 4 +
+    's">' +
+    l.map(function (p) { return item(p, false); }).join('') +
+    l.map(function (p) { return item(p, true); }).join('') +
+    '</div></div></section>'
+  );
+}
+
+    /* slider do banner (estilo Shopee) */
+function heroHTML() {
+  var slides = [
+    { t: 'Volta às aulas', h: 'Kit escolar completo', p: 'Escolha pronto ou monte do seu jeito. Entrega em até 3 dias úteis.', b: 'Montar meu kit', a: 'href="#montar"', art: 'kit', cor: '#e08a2e', bg: '#ff8a1f' },
+    { t: 'Uniformes', h: 'Uniformes e moda escolar', p: 'Camisetas e vestidos para o ano todo. Entrega em até 3 dias úteis.', b: 'Ver uniformes', a: 'href="#" data-a="cat" data-v="moda"', art: 'camiseta', cor: '#2f78c4', bg: '#2f78c4' },
+    { t: 'Mochilas', h: 'Mochilas para toda a turma', p: 'Modelos resistentes e cheios de estilo para todas as idades.', b: 'Ver mochilas', a: 'href="#" data-a="cat" data-v="mochilas"', art: 'mochila', cor: '#e2561c', bg: '#2a9d6f' },
+    { t: 'Papelaria', h: 'Papelaria e materiais', p: 'Cadernos, lápis e tudo da lista escolar em um só lugar.', b: 'Ver papelaria', a: 'href="#" data-a="cat" data-v="papelaria"', art: 'lapis', cor: '#2f78c4', bg: '#f2b705' },
+    { t: 'Materiais', h: 'Materiais escolares', p: 'Tudo para a lista do ano, separado por segmento.', b: 'Ver materiais', a: 'href="#" data-a="cat" data-v="material"', art: 'caderno', cor: '#e2561c', bg: '#7a5cc9' },
+    { t: 'Ensino Médio', h: 'Kit Ensino Médio', p: 'Kits prontos com o que o aluno precisa do 1º ao 3º ano.', b: 'Ver kits', a: 'href="#" data-a="cat" data-v="kit-m"', art: 'estojo', cor: '#2f78c4', bg: '#e2561c' },
+  ];
+  return (
+    '<div class="hero-wrap"><section class="hero-main" aria-label="Destaques"><div class="hero-track" id="hero">' +
+    slides
+      .map(function (s) {
+        return (
+          '<div class="banner" style="--c:' + s.bg + '"><div class="txt"><small>' + s.t + '</small><h2>' + s.h + '</h2><p>' + s.p + '</p><a class="btn" ' + s.a + '>' + s.b + '</a></div>' + art(s.art, s.cor) + '</div>'
+        );
+      })
+      .join('') +
+    '</div><button class="hero-nav prev" type="button" data-hero="-1" aria-label="Slide anterior">&#8249;</button>' +
+    '<button class="hero-nav next" type="button" data-hero="1" aria-label="Próximo slide">&#8250;</button>' +
+    '<div class="hero-dots">' +
+    slides
+      .map(function (s, i) {
+        return '<button type="button" data-hi="' + i + '" aria-label="Ir para o slide ' + (i + 1) + '"' + (i === 0 ? ' class="on"' : '') + '></button>';
+      })
+      .join('') +
+    '</div></section><div class="hero-side">' +
+    '<a class="hside" style="--c:#ff8a1f" href="#" data-a="cat" data-v="top"><small>Em destaque</small><b>Mais vendidos</b><span>Os queridinhos da lista escolar</span></a>' +
+    '<a class="hside" style="--c:#2a9d6f" href="https://wa.me/' + WA + '" target="_blank" rel="noopener"><small>Atendimento</small><b>Peça pelo WhatsApp</b><span>Entrega em até 3 dias úteis</span></a>' +
+    '</div></div>'
+  );
+}
 
         function vCats() {
           return (
@@ -1105,12 +1171,9 @@
 
         /* roteador */
         function route() {
-          var h = location.hash.slice(1),
+          var h = decodeURIComponent(location.hash.slice(1)),
             v = 'home',
             arg = '';
-          try {
-            h = decodeURIComponent(h);
-          } catch (e) {}
           if (h.indexOf('produto-') === 0) {
             arg = h.slice(8);
             if (byId[arg]) v = 'produto';
@@ -1295,17 +1358,7 @@
             var c2 = $('#cidade2');
             if (c2) c2.value = S.cidade;
             refreshCart();
-            if (VIEW === 'produto') {
-              var qs = $('#qtySel'),
-                qv = qs ? parseInt(qs.value, 10) || 1 : 1;
-              route();
-              var qs2 = $('#qtySel');
-              if (qs2) {
-                qs2.value = String(qv);
-                var pp = byId[location.hash.slice(9)];
-                if (pp) $('#waProd').href = waProduct(pp, qv);
-              }
-            }
+            if (VIEW === 'produto') route();
           }
           if (e.target.id === 'qtySel') {
             var pid = location.hash.slice(9),
@@ -1325,6 +1378,52 @@
           }
           $('#app').innerHTML = vHome();
         });
+
+          /* comportamento do slider do banner */
+var heroPause = 0;
+function heroIdx() {
+  var t = document.getElementById('hero');
+  return t && t.clientWidth ? Math.round(t.scrollLeft / t.clientWidth) : 0;
+}
+function heroGo(i, user) {
+  var t = document.getElementById('hero');
+  if (!t) return;
+  var n = t.children.length,
+    wrap = i < 0 || i >= n;
+  i = (i + n) % n;
+  t.scrollTo({ left: i * t.clientWidth, behavior: wrap ? 'auto' : 'smooth' });
+  if (user) heroPause = Date.now() + 8000;
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-hero],[data-hi]');
+  if (!b) return;
+  if (b.hasAttribute('data-hi')) heroGo(+b.getAttribute('data-hi'), true);
+  else heroGo(heroIdx() + +b.getAttribute('data-hero'), true);
+});
+document.addEventListener(
+  'scroll',
+  function (e) {
+    if (!e.target || e.target.id !== 'hero') return;
+    var i = heroIdx(),
+      d = document.querySelectorAll('.hero-dots button');
+    for (var k = 0; k < d.length; k++) d[k].classList.toggle('on', k === i);
+  },
+  true
+);
+document.addEventListener(
+  'touchstart',
+  function (e) {
+    if (e.target.closest && e.target.closest('#hero')) heroPause = Date.now() + 8000;
+  },
+  { passive: true }
+);
+setInterval(function () {
+  if (document.hidden || Date.now() < heroPause) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (document.querySelector('.hero-main:hover')) return;
+  heroGo(heroIdx() + 1, false);
+}, 4500);
+
         window.addEventListener('hashchange', route);
         route();
       })();
