@@ -1,3 +1,0 @@
-/admin/*  /admin/index.html   200
-/api/admin/*  /.netlify/functions/admin-api   200
-/*  /index.html   200
