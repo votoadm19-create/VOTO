@@ -9,9 +9,37 @@
             currency: 'BRL',
           });
         };
-        var WA = '5511947400141',
-          WA_TXT = '11 94740-0141';
-        var FRETE = { Jundiaí: 10, 'Várzea Paulista': 15 };
+        var h = function (v) {
+          return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+            return {
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            }[c];
+          });
+        };
+        function apiJSON(url, opts) {
+          opts = opts || {};
+          opts.headers = opts.headers || {};
+          if (opts.body && typeof opts.body !== 'string') {
+            opts.body = JSON.stringify(opts.body);
+            opts.headers['Content-Type'] = 'application/json';
+          }
+          return fetch(url, opts).then(function (r) {
+            return r.json().catch(function () {
+              return {};
+            }).then(function (d) {
+              if (!r.ok) throw new Error(d.erro || 'Não foi possível concluir.');
+              return d;
+            });
+          });
+        }
+        var CFG = window.VOTO_CONFIG || {};
+        var WA = CFG.whatsapp || '5511947400141',
+          WA_TXT = CFG.whatsappTexto || '11 94740-0141';
+        var FRETE = CFG.frete || { Jundiaí: 10, 'Várzea Paulista': 15 };
 
         var ICON = {
           search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
@@ -170,6 +198,19 @@
               p.nome +
               '" loading="lazy">'
             );
+          if (
+            p.foto &&
+            (p.foto.indexOf('data:') === 0 ||
+              p.foto.indexOf('http') === 0 ||
+              p.foto.indexOf('/') === 0)
+          )
+            return (
+              '<img class="photo" src="' +
+              p.foto +
+              '" alt="' +
+              p.nome +
+              '" loading="lazy">'
+            );
           return art(p.art, p.cor);
         }
 
@@ -194,7 +235,9 @@
           masc: 'Moda masculina',
         };
 
-        var P = [
+        var P = Array.isArray(window.VOTO_PRODUCTS)
+          ? window.VOTO_PRODUCTS
+          : [
           {
             id: 'kit-fundamental-basico',
             nome: 'Kit Escolar Ensino Fundamental Básico',
@@ -520,6 +563,11 @@
           q: '',
           seg: 'f',
           bq: Object.assign({}, PRESET.f),
+          user: null,
+          orders: null,
+          authTab: 'login',
+          favs: [],
+          favProducts: [],
         };
         var VIEW = 'home';
         try {
@@ -583,6 +631,58 @@
           }, 1800);
         }
 
+        function starsHTML(nota) {
+          var n = Math.round(Number(nota) || 0),
+            s = '';
+          for (var i = 1; i <= 5; i++)
+            s += '<span class="' + (i <= n ? 'on' : '') + '">★</span>';
+          return '<span class="stars" aria-hidden="true">' + s + '</span>';
+        }
+        function isFav(id) {
+          return S.favs.indexOf(id) > -1;
+        }
+        function favBtn(p) {
+          return (
+            '<button type="button" class="fav' +
+            (isFav(p.id) ? ' on' : '') +
+            '" data-a="fav" data-id="' +
+            p.id +
+            '" aria-label="Favoritar ' +
+            p.nome +
+            '">' +
+            ic('heart', 20) +
+            '</button>'
+          );
+        }
+        function refreshFavs() {
+          if (!S.user) {
+            S.favs = [];
+            S.favProducts = [];
+            return Promise.resolve();
+          }
+          return apiJSON('/api/auth/favorites')
+            .then(function (list) {
+              S.favProducts = list;
+              S.favs = list.map(function (p) {
+                return p.id;
+              });
+            })
+            .catch(function () {});
+        }
+        function fmtCPF(v) {
+          var d = String(v || '').replace(/\D/g, '');
+          if (d.length !== 11) return v || '';
+          return (
+            d.slice(0, 3) +
+            '.' +
+            d.slice(3, 6) +
+            '.' +
+            d.slice(6, 9) +
+            '-' +
+            d.slice(9)
+          );
+        }
+
         function cartAdd(key, nome, preco, qtd, det, pid) {
           var f = S.cart.find(function (i) {
             return i.key === key;
@@ -621,10 +721,32 @@
             nbs[i].textContent = n ? String(n) : '';
         }
 
+        function customerLines() {
+          var L = [];
+          if (S.user) {
+            L.push('Nome: ' + S.user.nome);
+            if (S.user.cpf) L.push('CPF: ' + fmtCPF(S.user.cpf));
+            if (S.user.email) L.push('E-mail: ' + S.user.email);
+            if (S.user.telefone) L.push('WhatsApp: ' + S.user.telefone);
+            L.push('');
+          }
+          return L;
+        }
         function waCart() {
-          var L = ['Olá! Quero fazer um pedido na Voto:', ''];
+          var L = ['Olá! Quero fazer um pedido na Voto:', ''].concat(
+            customerLines()
+          );
           S.cart.forEach(function (i) {
-            L.push('• ' + i.qtd + 'x ' + i.nome + ' - ' + fmt(i.preco * i.qtd));
+            L.push(
+              '• ' +
+                i.qtd +
+                'x ' +
+                i.nome +
+                ' — ' +
+                fmt(i.preco) +
+                ' cada = ' +
+                fmt(i.preco * i.qtd)
+            );
             (i.det || []).forEach(function (d) {
               L.push('   - ' + d);
             });
@@ -633,28 +755,31 @@
             '',
             'Subtotal: ' + fmt(sub()),
             'Entrega (' + S.cidade + '): ' + fmt(frete()),
-            'Total: ' + fmt(sub() + frete())
+            'Total: ' + fmt(sub() + frete()),
+            '',
+            'Pagamento: Pix',
+            'Endereço de entrega: informo aqui no WhatsApp'
           );
           return (
             'https://wa.me/' + WA + '?text=' + encodeURIComponent(L.join('\n'))
           );
         }
         function waProduct(p, q) {
+          var L = ['Olá! Quero pedir na Voto:', ''].concat(customerLines());
+          L.push(
+            'Produto: ' + p.nome,
+            'Quantidade: ' + q,
+            'Valor unitário: ' + fmt(p.preco),
+            'Total dos produtos: ' + fmt(p.preco * q),
+            '',
+            'Cidade de entrega: ' + S.cidade,
+            'Frete estimado: ' + fmt(FRETE[S.cidade]),
+            'Total com entrega: ' + fmt(p.preco * q + FRETE[S.cidade]),
+            '',
+            'Pagamento: Pix'
+          );
           return (
-            'https://wa.me/' +
-            WA +
-            '?text=' +
-            encodeURIComponent(
-              'Olá! Quero pedir na Voto:\n• ' +
-                q +
-                'x ' +
-                p.nome +
-                ' - ' +
-                fmt(p.preco * q) +
-                '\nEntrega em ' +
-                S.cidade +
-                '.'
-            )
+            'https://wa.me/' + WA + '?text=' + encodeURIComponent(L.join('\n'))
           );
         }
 
@@ -674,12 +799,23 @@
             p.nome +
             ' ao carrinho">' +
             ic('cartplus', 20) +
-            '</button></div>' +
+            '</button>' +
+            favBtn(p) +
+            '</div>' +
             '<a class="cbody" href="#produto-' +
             p.id +
             '"><h3>' +
             p.nome +
             '</h3>' +
+            (p.total_avaliacoes
+              ? '<div class="rating">' +
+                starsHTML(p.nota_media) +
+                ' <b>' +
+                p.nota_media +
+                '</b> (' +
+                p.total_avaliacoes +
+                ')</div>'
+              : '') +
             (p.de ? '<s>' + fmt(p.de) + '</s>' : '') +
             '<div class="price">' +
             priceHTML(p.preco) +
@@ -694,7 +830,13 @@
           if (q)
             return l.filter(function (p) {
               return (
-                (p.nome + ' ' + TABLBL[p.cat]).toLowerCase().indexOf(q) > -1
+                (p.nome +
+                  ' ' +
+                  (p.descricao || '') +
+                  ' ' +
+                  TABLBL[p.cat])
+                  .toLowerCase()
+                  .indexOf(q) > -1
               );
             });
           if (S.cat === 'top')
@@ -803,29 +945,34 @@
               'mochila-infantil',
               'vestido-infantil',
               'lapis-de-cor-24',
-            ].map(function (i) {
-              return byId[i];
-            });
+            ]
+              .map(function (i) {
+                return byId[i];
+              })
+              .filter(Boolean);
             h +=
-              '<div class="grid"><section class="offers" aria-label="Ofertas da semana"><h2>OFERTAS DA SEMANA</h2><div class="list">' +
-              ofs
-                .map(function (p) {
-                  return (
-                    '<a class="mini" href="#produto-' +
-                    p.id +
-                    '"><div class="tile">' +
-                    pic(p) +
-                    '</div><span class="off">' +
-                    off(p) +
-                    '% OFF</span><s>' +
-                    fmt(p.de) +
-                    '</s><span class="p">' +
-                    priceHTML(p.preco) +
-                    '</span></a>'
-                  );
-                })
-                .join('') +
-              '</div></section>' +
+              '<div class="grid">' +
+              (ofs.length
+                ? '<section class="offers" aria-label="Ofertas da semana"><h2>OFERTAS DA SEMANA</h2><div class="list">' +
+                  ofs
+                    .map(function (p) {
+                      return (
+                        '<a class="mini" href="#produto-' +
+                        p.id +
+                        '"><div class="tile">' +
+                        pic(p) +
+                        '</div><span class="off">' +
+                        off(p) +
+                        '% OFF</span><s>' +
+                        fmt(p.de) +
+                        '</s><span class="p">' +
+                        priceHTML(p.preco) +
+                        '</span></a>'
+                      );
+                    })
+                    .join('') +
+                  '</div></section>'
+                : '') +
               list.map(card).join('') +
               '</div>';
             h +=
@@ -948,12 +1095,36 @@ function heroHTML() {
             '</a>' +
             '<a class="fab r" href="#carrinho" aria-label="Ir para o carrinho">' +
             ic('cart', 22) +
-            '</a></div>' +
+            '</a>' +
+            '<button type="button" class="fav pimgfav' +
+            (isFav(p.id) ? ' on' : '') +
+            '" data-a="fav" data-id="' +
+            p.id +
+            '" aria-label="Favoritar ' +
+            p.nome +
+            '">' +
+            ic('heart', 22) +
+            '</button></div>' +
             '<div class="in"><div class="stack" style="gap:14px;padding-top:16px">' +
             (p.badge ? '<span class="tag">' + p.badge + '</span>' : '') +
             '<h1 class="ptitle">' +
             p.nome +
-            '</h1><div style="color:var(--muted);font-weight:600;font-size:14px">' +
+            '</h1>' +
+            (p.total_avaliacoes
+              ? '<div class="ratingline">' +
+                starsHTML(p.nota_media) +
+                ' <b>' +
+                p.nota_media +
+                '</b> <span>(' +
+                p.total_avaliacoes +
+                ' avaliações)</span></div>'
+              : '<div class="ratingline muted">Ainda sem avaliações</div>') +
+            (p.descricao
+              ? '<p class="pdesc">' +
+                h(p.descricao).replace(/\n/g, '<br>') +
+                '</p>'
+              : '') +
+            '<div style="color:var(--muted);font-weight:600;font-size:14px">' +
             p.v +
             ' vendidos</div>' +
             (p.de
@@ -979,6 +1150,10 @@ function heroHTML() {
             '" target="_blank" rel="noopener" style="color:#fff">' +
             ic('chat', 20) +
             ' Pedir direto pelo WhatsApp</a>' +
+            '</div></div>' +
+            '<div class="in"><div class="stack" id="reviewsSection" style="padding-top:6px">' +
+            '<h2 class="sec">Avaliações de clientes</h2>' +
+            '<div class="panel" id="reviewsBox"><p class="oempty" style="margin:0">Carregando avaliações...</p></div>' +
             '</div></div></div>' +
             '<div class="actbar"><div class="in"><button class="btn2" data-a="addq" data-id="' +
             p.id +
@@ -986,6 +1161,78 @@ function heroHTML() {
             p.id +
             '">Comprar agora</button></div></div>'
           );
+        }
+
+        function reviewsHTML(p, data) {
+          var list = data.avaliacoes || [];
+          var html =
+            '<div class="revsum">' +
+            (data.media
+              ? '<div class="revbig">' +
+                data.media +
+                '</div><div>' +
+                starsHTML(data.media) +
+                '<div class="revcount">' +
+                data.total +
+                ' avaliação(ões)</div></div>'
+              : '<div class="revcount">Ainda não há avaliações para este produto.</div>') +
+            '</div>';
+          if (S.user) {
+            html +=
+              '<form id="reviewForm" class="reviewform" data-pid="' +
+              p.id +
+              '"><div class="revstars"><label for="revNota">Sua nota</label>' +
+              '<select name="nota" id="revNota">' +
+              '<option value="5">★★★★★ Excelente</option>' +
+              '<option value="4">★★★★ Muito bom</option>' +
+              '<option value="3">★★★ Bom</option>' +
+              '<option value="2">★★ Regular</option>' +
+              '<option value="1">★ Ruim</option></select></div>' +
+              '<textarea name="comentario" maxlength="600" placeholder="Conte como foi sua experiência com o produto..."></textarea>' +
+              '<p class="authmsg" id="revMsg" role="alert"></p>' +
+              '<button class="btn1" type="submit">Publicar avaliação</button></form>';
+          } else {
+            html +=
+              '<p class="oempty">Faça <a class="link" href="#conta">login ou crie sua conta</a> para avaliar este produto.</p>';
+          }
+          html += list.length
+            ? '<div class="revlist">' +
+              list
+                .map(function (r) {
+                  return (
+                    '<div class="review"><div class="reviewhead"><b>' +
+                    h(r.customer_nome || 'Cliente') +
+                    '</b>' +
+                    starsHTML(r.nota) +
+                    '</div><div class="revdate">' +
+                    h(String(r.criado_em || '').slice(0, 10)) +
+                    '</div>' +
+                    (r.comentario
+                      ? '<p>' + h(r.comentario).replace(/\n/g, '<br>') + '</p>'
+                      : '') +
+                    '</div>'
+                  );
+                })
+                .join('') +
+              '</div>'
+            : '';
+          return html;
+        }
+
+        function loadReviews(pid) {
+          var p = byId[pid];
+          if (!p) return;
+          apiJSON('/api/products/' + encodeURIComponent(pid) + '/reviews')
+            .then(function (data) {
+              var box = document.getElementById('reviewsBox');
+              if (box) box.innerHTML = reviewsHTML(p, data);
+            })
+            .catch(function () {
+              var box = document.getElementById('reviewsBox');
+              if (box)
+                box.innerHTML =
+                  '<p class="oempty" style="margin:0">Não foi possível carregar as avaliações.</p>';
+            });
         }
 
         function stepper(id, qtd, a) {
@@ -1056,7 +1303,11 @@ function heroHTML() {
             '</span></div><div class="tot"><span>Total</span><span id="s-tot">' +
             fmt(sub() + frete()) +
             '</span></div></div>' +
-            '<a class="btn1 wa" id="waCart" href="' +
+            (S.user
+              ? ''
+              : '<a class="btn2" href="#conta" style="margin-bottom:8px">Entrar / criar conta</a>' +
+                '<p style="margin:0 0 10px;color:var(--muted);font-size:13px">Entre na sua conta para acompanhar seus pedidos.</p>') +
+            '<a class="btn1 wa" id="waCart" data-a="checkout" href="' +
             waCart() +
             '" target="_blank" rel="noopener">' +
             ic('chat', 20) +
@@ -1127,6 +1378,13 @@ function heroHTML() {
             '<li>' +
             ic('check', 22) +
             '<span>O pagamento é feito pelo WhatsApp, com Pix. Nada é cobrado no site.</span></li></ul></div>' +
+            '<div class="panel"><div style="font-weight:700">Minha conta</div><p style="margin:6px 0 12px;color:var(--muted);font-size:14px">' +
+            (S.user
+              ? 'Você está conectado como ' + h(S.user.nome) + '.'
+              : 'Crie sua conta para acompanhar seus pedidos.') +
+            '</p><a class="btn2" href="#conta">' +
+            (S.user ? 'Ver minha conta' : 'Entrar ou criar conta') +
+            '</a></div>' +
             '<div class="panel"><div style="font-weight:700">WhatsApp da Voto</div><div class="copyrow"><span id="wanum">' +
             WA_TXT +
             '</span><button data-a="copy">Copiar</button></div>' +
@@ -1135,6 +1393,247 @@ function heroHTML() {
             '" target="_blank" rel="noopener">' +
             ic('chat', 20) +
             ' Chamar no WhatsApp</a></div></div></div>'
+          );
+        }
+
+        function footHTML() {
+          var cats = CATS.filter(function (c) {
+            return c.id !== 'tudo';
+          })
+            .map(function (c) {
+              return (
+                '<a href="#" data-a="cat" data-v="' +
+                c.id +
+                '">' +
+                c.nome +
+                '</a>'
+              );
+            })
+            .join('');
+          var freteTxt = Object.keys(FRETE)
+            .map(function (k) {
+              return k + ' ' + fmt(FRETE[k]);
+            })
+            .join(' · ');
+          return (
+            '<div class="in footin">' +
+            '<div class="footcol brand"><b>Voto</b><p>Materiais escolares, uniformes e kits para o ano todo. Entrega rápida e atendimento próximo.</p>' +
+            '<a class="btn2" href="https://wa.me/' +
+            WA +
+            '" target="_blank" rel="noopener">' +
+            ic('chat', 18) +
+            ' Falar no WhatsApp</a></div>' +
+            '<div class="footcol"><b>Categorias</b>' +
+            cats +
+            '</div>' +
+            '<div class="footcol"><b>Ajuda</b>' +
+            '<a href="#mais">Entrega e contato</a>' +
+            '<a href="#montar">Montar meu kit</a>' +
+            '<a href="#carrinho">Meu carrinho</a>' +
+            '<a href="#conta">Minha conta</a></div>' +
+            '<div class="footcol"><b>Atendimento</b>' +
+            '<a href="https://wa.me/' +
+            WA +
+            '" target="_blank" rel="noopener">' +
+            WA_TXT +
+            '</a>' +
+            '<span>Entrega: ' +
+            freteTxt +
+            '</span>' +
+            '<span>Seg a sex, 9h às 18h</span></div>' +
+            '</div>' +
+            '<div class="footbar"><div class="in">© ' +
+            new Date().getFullYear() +
+            ' Voto · Todos os direitos reservados</div></div>'
+          );
+        }
+
+        function orderPayload() {
+          return {
+            itens: S.cart.map(function (i) {
+              return {
+                key: i.key,
+                nome: i.nome,
+                preco: i.preco,
+                qtd: i.qtd,
+                det: i.det,
+              };
+            }),
+            cidade: S.cidade,
+            subtotal: sub(),
+            frete: frete(),
+            total: sub() + frete(),
+          };
+        }
+
+        var OST = {
+          novo: 'Novo',
+          confirmado: 'Confirmado',
+          enviado: 'Enviado',
+          entregue: 'Entregue',
+          cancelado: 'Cancelado',
+        };
+
+        function ordersHTML(list) {
+          if (!list || !list.length)
+            return '<p class="oempty">Você ainda não fez pedidos pelo site. Os pedidos finalizados pela sua conta aparecem aqui.</p>';
+          return (
+            '<div class="orderlist">' +
+            list
+              .map(function (o) {
+                var itens = Array.isArray(o.itens) ? o.itens : [];
+                return (
+                  '<div class="orderitem"><div class="ohead"><span>Pedido #' +
+                  o.id +
+                  '</span><span>' +
+                  fmt(o.total) +
+                  '</span></div><div style="color:var(--muted);font-size:12px;margin-bottom:6px">' +
+                  h(OST[o.status] || o.status) +
+                  ' · ' +
+                  h(o.cidade || '') +
+                  '</div><ul class="oitems">' +
+                  itens
+                    .map(function (i) {
+                      var qtd = i.qtd || 1;
+                      return (
+                        '<li>' +
+                        h(qtd + 'x ' + (i.nome || 'Item')) +
+                        ' — ' +
+                        fmt((i.preco || 0) * qtd) +
+                        '</li>'
+                      );
+                    })
+                    .join('') +
+                  '</ul></div>'
+                );
+              })
+              .join('') +
+            '</div>'
+          );
+        }
+
+        function loadOrders() {
+          if (!S.user) return;
+          apiJSON('/api/auth/orders')
+            .then(function (list) {
+              S.orders = list;
+              var box = document.getElementById('ordersBox');
+              if (box) box.innerHTML = ordersHTML(list);
+            })
+            .catch(function () {
+              var box = document.getElementById('ordersBox');
+              if (box)
+                box.innerHTML =
+                  '<p class="oempty">Não foi possível carregar seus pedidos agora.</p>';
+            });
+        }
+
+        function vAccount() {
+          var head = '<div class="in"><div class="stack"><h2 class="sec">Minha conta</h2>';
+          if (!S.user) {
+            var reg = S.authTab === 'register';
+            return (
+              head +
+              '<div class="panel"><div class="authswitch">' +
+              '<button type="button" data-a="authtab" data-v="login" aria-pressed="' +
+              (!reg) +
+              '">Entrar</button>' +
+              '<button type="button" data-a="authtab" data-v="register" aria-pressed="' +
+              reg +
+              '">Criar conta</button></div>' +
+              '<form id="authForm" class="authform" novalidate>' +
+              (reg
+                ? '<label>Nome<input name="nome" autocomplete="name" required></label>'
+                : '') +
+              '<label>E-mail<input name="email" type="email" autocomplete="email" required></label>' +
+              (reg
+                ? '<label>Telefone / WhatsApp<input name="telefone" autocomplete="tel" placeholder="(11) 90000-0000"></label>'
+                : '') +
+              '<label>Senha<input name="senha" type="password" autocomplete="' +
+              (reg ? 'new-password' : 'current-password') +
+              '" minlength="6" required></label>' +
+              '<p class="authmsg" id="authMsg" role="alert"></p>' +
+              '<button class="btn1" type="submit">' +
+              (reg ? 'Criar minha conta' : 'Entrar') +
+              '</button></form>' +
+              '<p class="note">Com sua conta você acompanha os pedidos e agiliza o atendimento. O pagamento continua pelo WhatsApp.</p>' +
+              '</div></div></div>'
+            );
+          }
+          var initial = (S.user.nome || '?').charAt(0).toUpperCase();
+          var avatar = S.user.foto
+            ? '<img src="' + h(S.user.foto) + '" alt="Foto de ' + h(S.user.nome) + '">'
+            : h(initial);
+          var cpfVal = String(S.user.cpf || '').replace(/\D/g, '');
+          return (
+            head +
+            '<div class="panel"><div class="accountbox"><div class="avatar">' +
+            avatar +
+            '</div><div><div style="font-weight:700">' +
+            h(S.user.nome) +
+            '</div><div style="color:var(--muted);font-size:13px">' +
+            h(S.user.email) +
+            '</div>' +
+            (S.user.cpf
+              ? '<div style="color:var(--muted);font-size:13px">CPF: ' +
+                h(fmtCPF(S.user.cpf)) +
+                '</div>'
+              : '') +
+            (S.user.telefone
+              ? '<div style="color:var(--muted);font-size:13px">' +
+                h(S.user.telefone) +
+                '</div>'
+              : '') +
+            '</div></div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">' +
+            '<a class="btn2" href="#" data-a="cat" data-v="tudo" style="max-width:220px">Continuar comprando</a>' +
+            '<button class="btn2" data-a="logout" style="max-width:180px">Sair da conta</button>' +
+            '</div></div>' +
+            '<div class="panel"><div class="phead"><b>Meus dados</b><span>Mantenha seu cadastro atualizado</span></div>' +
+            '<form id="profileForm" class="authform" novalidate>' +
+            '<div class="fotorow"><div class="avatar big" id="profPrev">' +
+            avatar +
+            '</div><label class="btn2 filebtn">Trocar foto<input type="file" id="profFile" accept="image/*"></label></div>' +
+            '<label>Nome<input name="nome" value="' +
+            h(S.user.nome) +
+            '" autocomplete="name" required></label>' +
+            '<label>CPF<input name="cpf" inputmode="numeric" value="' +
+            h(cpfVal) +
+            '" placeholder="000.000.000-00"></label>' +
+            '<label>Telefone / WhatsApp<input name="telefone" value="' +
+            h(S.user.telefone || '') +
+            '" autocomplete="tel" placeholder="(11) 90000-0000"></label>' +
+            '<label>E-mail<input value="' +
+            h(S.user.email) +
+            '" disabled></label>' +
+            '<p class="authmsg" id="profMsg" role="alert"></p>' +
+            '<button class="btn1" type="submit">Salvar dados</button></form></div>' +
+            '<div class="panel"><div class="phead"><b>Minhas compras</b><span>' +
+            (S.orders ? S.orders.length : '') +
+            '</span></div><div id="ordersBox">' +
+            (S.orders
+              ? ordersHTML(S.orders)
+              : '<p class="oempty">Carregando pedidos...</p>') +
+            '</div></div>' +
+            '<div class="panel"><div class="phead"><b>Meus favoritos</b><span id="favCount">' +
+            S.favs.length +
+            '</span></div><div id="favBox">' +
+            favoritesHTML() +
+            '</div></div></div></div>'
+          );
+        }
+
+        function favoritesHTML() {
+          if (!S.favProducts.length)
+            return '<p class="oempty">Você ainda não tem favoritos. Toque no coração dos produtos para salvar.</p>';
+          return (
+            '<div class="grid favgrid">' +
+            S.favProducts
+              .map(function (p) {
+                return card(p);
+              })
+              .join('') +
+            '</div>'
           );
         }
 
@@ -1178,7 +1677,7 @@ function heroHTML() {
             arg = h.slice(8);
             if (byId[arg]) v = 'produto';
           } else if (
-            ['categorias', 'carrinho', 'montar', 'mais'].indexOf(h) > -1
+            ['categorias', 'carrinho', 'montar', 'mais', 'conta'].indexOf(h) > -1
           )
             v = h;
           VIEW = v;
@@ -1198,8 +1697,13 @@ function heroHTML() {
                     ? vBuild()
                     : v === 'mais'
                       ? vMore()
-                      : vHome();
+                      : v === 'conta'
+                        ? vAccount()
+                        : vHome();
           $('#app').innerHTML = html;
+          $('#foot').innerHTML = footHTML();
+          if (v === 'conta' && S.user) loadOrders();
+          if (v === 'produto') loadReviews(arg);
           $('#tabs').innerHTML = tabsHTML();
           $('#navin').innerHTML = navHTML();
           $('#navtop').innerHTML = navHTML();
@@ -1341,6 +1845,83 @@ function heroHTML() {
             } catch (err) {
               fb();
             }
+          } else if (a === 'fav') {
+            e.preventDefault();
+            if (!S.user) {
+              toast('Entre na sua conta para favoritar');
+              go('conta');
+              return;
+            }
+            apiJSON('/api/auth/favorites/' + encodeURIComponent(id), {
+              method: 'POST',
+            })
+              .then(function (data) {
+                var on = !!data.favorito;
+                if (on) {
+                  if (S.favs.indexOf(id) < 0) S.favs.push(id);
+                  if (
+                    byId[id] &&
+                    !S.favProducts.some(function (p) {
+                      return p.id === id;
+                    })
+                  )
+                    S.favProducts.push(byId[id]);
+                } else {
+                  S.favs = S.favs.filter(function (x) {
+                    return x !== id;
+                  });
+                  S.favProducts = S.favProducts.filter(function (p) {
+                    return p.id !== id;
+                  });
+                }
+                var sel = '[data-a="fav"][data-id="' + id + '"]';
+                document.querySelectorAll(sel).forEach(function (b) {
+                  b.classList.toggle('on', on);
+                  var s = b.querySelector('span');
+                  if (s)
+                    s.textContent = on ? 'Favoritado' : 'Favoritar';
+                  b.setAttribute(
+                    'aria-label',
+                    (on ? 'Remover dos favoritos: ' : 'Favoritar: ') +
+                      (byId[id] ? byId[id].nome : 'produto')
+                  );
+                });
+                if (VIEW === 'conta') {
+                  var fb = document.getElementById('favBox');
+                  if (fb) fb.innerHTML = favoritesHTML();
+                  var fc = document.getElementById('favCount');
+                  if (fc) fc.textContent = S.favs.length;
+                }
+                toast(
+                  on
+                    ? 'Adicionado aos favoritos'
+                    : 'Removido dos favoritos'
+                );
+              })
+              .catch(function (err) {
+                toast(err.message);
+              });
+          } else if (a === 'authtab') {
+            S.authTab = v;
+            route();
+          } else if (a === 'logout') {
+            apiJSON('/api/auth/logout', { method: 'POST' })
+              .catch(function () {})
+              .then(function () {
+                S.user = null;
+                S.orders = null;
+                S.favs = [];
+                S.favProducts = [];
+                S.authTab = 'login';
+                toast('Você saiu da conta');
+                route();
+              });
+          } else if (a === 'checkout') {
+            if (S.user)
+              apiJSON('/api/orders', {
+                method: 'POST',
+                body: orderPayload(),
+              }).catch(function () {});
           } else if (a === 'theme') {
             applyTheme(
               document.documentElement.dataset.theme === 'dark'
@@ -1350,7 +1931,162 @@ function heroHTML() {
             );
           }
         });
+        document.addEventListener('submit', function (e) {
+          var form = e.target;
+          if (
+            form.id !== 'authForm' &&
+            form.id !== 'profileForm' &&
+            form.id !== 'reviewForm'
+          )
+            return;
+          e.preventDefault();
+          var btn = form.querySelector('button[type="submit"]');
+          var label = btn.textContent;
+
+          if (form.id === 'reviewForm') {
+            var revMsg = document.getElementById('revMsg');
+            var nota = parseInt(form.querySelector('[name="nota"]').value, 10);
+            var comentario = form
+              .querySelector('[name="comentario"]')
+              .value.trim();
+            revMsg.textContent = '';
+            if (!nota) {
+              revMsg.textContent = 'Escolha uma nota.';
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            apiJSON(
+              '/api/products/' +
+                encodeURIComponent(form.dataset.pid) +
+                '/reviews',
+              {
+                method: 'POST',
+                body: { nota: nota, comentario: comentario },
+              }
+            )
+              .then(function () {
+                toast('Avaliação publicada. Obrigado!');
+                loadReviews(form.dataset.pid);
+              })
+              .catch(function (err) {
+                revMsg.textContent = err.message;
+                btn.disabled = false;
+                btn.textContent = label;
+              });
+            return;
+          }
+
+          if (form.id === 'profileForm') {
+            var profMsg = document.getElementById('profMsg');
+            var nome = form.querySelector('[name="nome"]').value.trim();
+            var cpf = form
+              .querySelector('[name="cpf"]')
+              .value.replace(/\D/g, '');
+            var tel = form.querySelector('[name="telefone"]').value.trim();
+            profMsg.textContent = '';
+            if (!nome) {
+              profMsg.textContent = 'Informe seu nome.';
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+            apiJSON('/api/auth/profile', {
+              method: 'PUT',
+              body: {
+                nome: nome,
+                cpf: cpf,
+                telefone: tel,
+                foto: S.user.foto || '',
+              },
+            })
+              .then(function (data) {
+                S.user = data.cliente;
+                toast('Dados atualizados');
+                route();
+              })
+              .catch(function (err) {
+                profMsg.textContent = err.message;
+                btn.disabled = false;
+                btn.textContent = label;
+              });
+            return;
+          }
+
+          var msg = document.getElementById('authMsg');
+          var reg = S.authTab === 'register';
+          var email = form.querySelector('[name="email"]').value.trim();
+          var senha = form.querySelector('[name="senha"]').value;
+          var nomeEl = form.querySelector('[name="nome"]');
+          var telEl = form.querySelector('[name="telefone"]');
+          msg.textContent = '';
+          if (!email || !senha || (reg && !nomeEl.value.trim())) {
+            msg.textContent = 'Preencha os campos obrigatórios.';
+            return;
+          }
+          btn.disabled = true;
+          btn.textContent = 'Aguarde...';
+          var body = { email: email, senha: senha };
+          if (reg) {
+            body.nome = nomeEl.value.trim();
+            body.telefone = telEl.value.trim();
+          }
+          apiJSON(reg ? '/api/auth/register' : '/api/auth/login', {
+            method: 'POST',
+            body: body,
+          })
+            .then(function (data) {
+              S.user = data.cliente;
+              S.orders = null;
+              return refreshFavs().then(function () {
+                toast(
+                  'Bem-vindo(a), ' + data.cliente.nome.split(' ')[0] + '!'
+                );
+                route();
+              });
+            })
+            .catch(function (err) {
+              msg.textContent = err.message;
+            })
+            .then(function () {
+              btn.disabled = false;
+              btn.textContent = label;
+            });
+        });
         document.addEventListener('change', function (e) {
+          if (e.target.id === 'profFile') {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+              toast('Imagem muito grande (máximo 5MB)');
+              e.target.value = '';
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+              apiJSON('/api/auth/upload', {
+                method: 'POST',
+                body: { dataUrl: reader.result },
+              })
+                .then(function (data) {
+                  S.user.foto = data.url;
+                  var prev = document.getElementById('profPrev');
+                  if (prev)
+                    prev.innerHTML =
+                      '<img src="' +
+                      h(data.url) +
+                      '" alt="Foto de ' +
+                      h(S.user.nome) +
+                      '">';
+                  toast('Foto atualizada');
+                })
+                .catch(function (err) {
+                  toast(err.message);
+                });
+            };
+            reader.readAsDataURL(file);
+            return;
+          }
           if (e.target.id === 'cidade' || e.target.id === 'cidade2') {
             S.cidade = e.target.value;
             save();
@@ -1425,5 +2161,11 @@ setInterval(function () {
 }, 4500);
 
         window.addEventListener('hashchange', route);
-        route();
+        apiJSON('/api/auth/me')
+          .then(function (data) {
+            S.user = data.cliente || null;
+            return refreshFavs();
+          })
+          .catch(function () {})
+          .then(route);
       })();

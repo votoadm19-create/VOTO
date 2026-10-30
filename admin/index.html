@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voto · Painel administrativo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <div class="login" id="login">
+      <form class="login-card" id="loginForm">
+        <div class="brand">
+          <span class="logo">V</span>
+          <div>
+            <strong>Voto</strong>
+            <small>Painel administrativo</small>
+          </div>
+        </div>
+        <label>
+          Usuário
+          <input id="usuario" name="usuario" autocomplete="username" required />
+        </label>
+        <label>
+          Senha
+          <input
+            id="senha"
+            name="senha"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <p class="erro" id="loginErro" role="alert"></p>
+        <button class="btn primary" type="submit">Entrar no painel</button>
+        <p class="hint">Acesso restrito à equipe da Voto.</p>
+      </form>
+    </div>
+
+    <div class="app" id="app" hidden>
+      <aside class="side">
+        <div class="brand">
+          <span class="logo">V</span>
+          <div>
+            <strong>Voto</strong>
+            <small>Admin</small>
+          </div>
+        </div>
+        <nav>
+          <button data-view="resumo" class="on">Resumo</button>
+          <button data-view="produtos">Produtos</button>
+          <button data-view="clientes">Clientes</button>
+          <button data-view="pedidos">Pedidos</button>
+          <button data-view="avaliacoes">Avaliações</button>
+          <button data-view="config">Configurações</button>
+        </nav>
+        <div class="side-foot">
+          <span id="who"></span>
+          <button class="btn ghost small" id="logout">Sair</button>
+          <a class="link-site" href="/" target="_blank" rel="noopener">Ver site ↗</a>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="title">Resumo</h1>
+            <p id="subtitle">Visão geral da loja</p>
+          </div>
+          <button class="btn ghost mobile-nav" type="button" id="menuBtn">Menu</button>
+        </header>
+        <section id="view" class="view"></section>
+      </main>
+    </div>
+
+    <div class="modal" id="modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true">
+        <header>
+          <h2 id="modalTitle"></h2>
+          <button class="icon-btn" type="button" id="modalClose" aria-label="Fechar">×</button>
+        </header>
+        <div id="modalBody"></div>
+      </div>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

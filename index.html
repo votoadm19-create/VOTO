@@ -69,6 +69,22 @@
               <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" />
             </svg>
           </button>
+          <a class="accountbtn" id="accountbtn" href="#conta" aria-label="Minha conta"
+            ><svg
+              class="ic"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="8" r="3.6" />
+              <path d="M4.5 20a7.5 7.5 0 0115 0" /></svg
+          ></a>
           <a class="cartbtn" href="#carrinho" aria-label="Carrinho"
             ><svg
               class="ic"
@@ -123,12 +139,15 @@
     </header>
 
     <main id="app"></main>
+    <footer id="foot"></footer>
 
     <nav id="nav" aria-label="Menu principal">
       <div class="in" id="navin"></div>
     </nav>
     <div id="toast" role="status" aria-live="polite"></div>
 
+    <script src="/api/config.js"></script>
+    <script src="/api/products.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
