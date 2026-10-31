@@ -773,7 +773,6 @@
             'Total dos produtos: ' + fmt(p.preco * q),
             '',
             'Cidade de entrega: ' + S.cidade,
-            'Frete estimado: ' + fmt(FRETE[S.cidade]),
             'Total com entrega: ' + fmt(p.preco * q + FRETE[S.cidade]),
             '',
             'Pagamento: Pix'
@@ -1396,37 +1395,47 @@ function heroHTML() {
           );
         }
 
+        // SOBRE A LOJA
+        function vAbout() {
+          return (
+            '<div class="in"><div class="stack"><h2 class="sec">Sobre a Voto</h2>' +
+            '<div class="panel"><p class="aboutlead">A Voto é a sua loja de materiais escolares e uniformes em Jundiaí e Várzea Paulista.</p>' +
+            '<p class="abouttext">Reunimos materiais, uniformes e kits prontos para facilitar o dia a dia das famílias. Você escolhe tudo pelo site, monta seu kit e finaliza o pedido direto pelo WhatsApp, com pagamento por Pix.</p></div>' +
+            '<div class="panel"><div class="abouttitle">O que você encontra aqui</div><ul class="facts">' +
+            '<li>' +
+            ic('check', 22) +
+            '<span>Materiais e uniformes para o ano todo, organizados por categoria e nível de ensino.</span></li>' +
+            '<li>' +
+            ic('truck', 22) +
+            '<span>Entrega em até 3 dias úteis em Jundiaí e Várzea Paulista.</span></li>' +
+            '<li>' +
+            ic('chat', 22) +
+            '<span>Atendimento próximo pelo WhatsApp para tirar dúvidas e acompanhar o pedido.</span></li></ul></div>' +
+            '<div class="panel"><div class="abouttitle">Fale com a gente</div>' +
+            '<p class="abouttext">' +
+            WA_TXT +
+            ' · Seg a sex, 9h às 18h</p>' +
+            '<a class="btn1 wa" href="https://wa.me/' +
+            WA +
+            '" target="_blank" rel="noopener">' +
+            ic('chat', 20) +
+            ' Chamar no WhatsApp</a>' +
+            '<a class="btn2" href="#">Voltar ao início</a></div>' +
+            '</div></div>'
+          );
+        }
+
         function footHTML() {
-          var cats = CATS.filter(function (c) {
-            return c.id !== 'tudo';
-          })
-            .map(function (c) {
-              return (
-                '<a href="#" data-a="cat" data-v="' +
-                c.id +
-                '">' +
-                c.nome +
-                '</a>'
-              );
-            })
-            .join('');
-          var freteTxt = Object.keys(FRETE)
-            .map(function (k) {
-              return k + ' ' + fmt(FRETE[k]);
-            })
-            .join(' · ');
           return (
             '<div class="in footin">' +
-            '<div class="footcol brand"><b>Voto</b><p>Materiais escolares, uniformes e kits para o ano todo. Entrega rápida e atendimento próximo.</p>' +
+            '<div class="footcol brand"><b>Voto</b><p>Materiais escolares e uniformes com entrega rápida e atendimento próximo.</p>' +
             '<a class="btn2" href="https://wa.me/' +
             WA +
             '" target="_blank" rel="noopener">' +
             ic('chat', 18) +
             ' Falar no WhatsApp</a></div>' +
-            '<div class="footcol"><b>Categorias</b>' +
-            cats +
-            '</div>' +
             '<div class="footcol"><b>Ajuda</b>' +
+            '<a href="#sobre">Sobre a Voto</a>' +
             '<a href="#mais">Entrega e contato</a>' +
             '<a href="#montar">Montar meu kit</a>' +
             '<a href="#carrinho">Meu carrinho</a>' +
@@ -1437,10 +1446,8 @@ function heroHTML() {
             '" target="_blank" rel="noopener">' +
             WA_TXT +
             '</a>' +
-            '<span>Entrega: ' +
-            freteTxt +
-            '</span>' +
-            '<span>Seg a sex, 9h às 18h</span></div>' +
+            '<span>Seg a sex, 9h às 18h</span>' +
+            '<span>Jundiaí e Várzea Paulista</span></div>' +
             '</div>' +
             '<div class="footbar"><div class="in">© ' +
             new Date().getFullYear() +
@@ -1677,7 +1684,9 @@ function heroHTML() {
             arg = h.slice(8);
             if (byId[arg]) v = 'produto';
           } else if (
-            ['categorias', 'carrinho', 'montar', 'mais', 'conta'].indexOf(h) > -1
+            ['categorias', 'carrinho', 'montar', 'mais', 'conta', 'sobre'].indexOf(
+              h
+            ) > -1
           )
             v = h;
           VIEW = v;
@@ -1699,7 +1708,9 @@ function heroHTML() {
                       ? vMore()
                       : v === 'conta'
                         ? vAccount()
-                        : vHome();
+                        : v === 'sobre'
+                          ? vAbout()
+                          : vHome();
           $('#app').innerHTML = html;
           $('#foot').innerHTML = footHTML();
           if (v === 'conta' && S.user) loadOrders();
