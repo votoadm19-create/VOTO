@@ -3,3 +3,8 @@ data/
 uploads/
 *.log
 .DS_Store
+
+# Variáveis de ambiente e credenciais
+.env
+.env.*
+!.env.example
