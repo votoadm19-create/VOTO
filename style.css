@@ -997,6 +997,42 @@
   font-weight: 700;
   color: var(--ink);
 }
+.aboutvalues {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+@media (min-width: 600px) {
+  .aboutvalues {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.valcard {
+  background: var(--tile);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.valcard b {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--brand);
+}
+.valcard span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.aboutslogan {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand);
+  padding: 6px 0;
+}
       .cats {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1207,7 +1243,8 @@
         }
         #app[data-view='carrinho'] > .in,
         #app[data-view='montar'] > .in,
-        #app[data-view='mais'] > .in {
+        #app[data-view='mais'] > .in,
+        #app[data-view='sobre'] > .in {
           max-width: 1000px;
         }
         /* produto em duas colunas */

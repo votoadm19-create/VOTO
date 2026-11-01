@@ -1399,28 +1399,52 @@ function heroHTML() {
         function vAbout() {
           return (
             '<div class="in"><div class="stack"><h2 class="sec">Sobre a Voto</h2>' +
-            '<div class="panel"><p class="aboutlead">A Voto é a sua loja de materiais escolares e uniformes em Jundiaí e Várzea Paulista.</p>' +
-            '<p class="abouttext">Reunimos materiais, uniformes e kits prontos para facilitar o dia a dia das famílias. Você escolhe tudo pelo site, monta seu kit e finaliza o pedido direto pelo WhatsApp, com pagamento por Pix.</p></div>' +
-            '<div class="panel"><div class="abouttitle">O que você encontra aqui</div><ul class="facts">' +
+            '<div class="panel">' +
+            '<p class="aboutlead">A VOTO é uma loja de variedades que reúne tudo o que você precisa em um só lugar. Trabalhamos com produtos de papelaria, materiais escolares, itens para casa, eletrônicos, mochilas e muito mais.</p>' +
+            '<p class="abouttext">Nosso objetivo é proporcionar uma experiência de compra simples, rápida e acessível, sempre priorizando qualidade, praticidade e satisfação.</p>' +
+            '</div>' +
+            '<div class="panel">' +
+            '<div class="abouttitle">O que você encontra aqui?</div>' +
+            '<ul class="facts">' +
             '<li>' +
-            ic('check', 22) +
-            '<span>Materiais e uniformes para o ano todo, organizados por categoria e nível de ensino.</span></li>' +
+            ic('grid', 22) +
+            '<span><b>Variedade de produtos:</b> papelaria, eletrônicos, produtos para casa, mochilas e diversas outras categorias.</span></li>' +
+            '<li>' +
+            ic('build', 22) +
+            '<span><b>Kits escolares personalizados:</b> escolha entre nossos kits prontos ou monte seu próprio kit de materiais escolares de maneira rápida, fácil e prática.</span></li>' +
             '<li>' +
             ic('truck', 22) +
-            '<span>Entrega em até 3 dias úteis em Jundiaí e Várzea Paulista.</span></li>' +
+            '<span><b>Entrega expressa:</b> compras realizadas até as 16h contam com entrega no mesmo dia, nas regiões atendidas.</span></li>' +
             '<li>' +
-            ic('chat', 22) +
-            '<span>Atendimento próximo pelo WhatsApp para tirar dúvidas e acompanhar o pedido.</span></li></ul></div>' +
-            '<div class="panel"><div class="abouttitle">Fale com a gente</div>' +
-            '<p class="abouttext">' +
-            WA_TXT +
-            ' · Seg a sex, 9h às 18h</p>' +
+            ic('check', 22) +
+            '<span><b>Qualidade e confiança:</b> selecionamos nossos produtos pensando na melhor experiência para nossos clientes.</span></li>' +
+            '</ul>' +
+            '</div>' +
+            '<div class="panel">' +
+            '<div class="abouttitle">Atendimento inteligente, 24 horas por dia!</div>' +
+            '<p class="abouttext">Na VOTO, você não precisa esperar pelo horário comercial para ser atendido.</p>' +
+            '<p class="abouttext">Contamos com a <b>Luna</b>, nossa inteligência artificial, preparada para atender nossos clientes 24 horas por dia, todos os dias da semana.</p>' +
+            '<p class="abouttext">Ela está sempre disponível para esclarecer dúvidas, auxiliar nas compras e acompanhar nossos clientes.</p>' +
+            '<p class="abouttext">E tem mais: quando surge uma dúvida que a Luna ainda não consegue responder, ela solicita automaticamente nosso suporte humano, recebe a orientação necessária e retorna ao cliente. Assim, nossa inteligência artificial também aprende e evolui constantemente para oferecer um atendimento cada vez melhor.</p>' +
             '<a class="btn1 wa" href="https://wa.me/' +
             WA +
             '" target="_blank" rel="noopener">' +
             ic('chat', 20) +
-            ' Chamar no WhatsApp</a>' +
-            '<a class="btn2" href="#">Voltar ao início</a></div>' +
+            ' Falar com a Luna no WhatsApp</a>' +
+            '</div>' +
+            '<div class="panel">' +
+            '<div class="abouttitle">Muito mais que uma loja</div>' +
+            '<div class="aboutvalues">' +
+            '<div class="valcard"><b>V</b><span>Valorização</span></div>' +
+            '<div class="valcard"><b>O</b><span>Oportunidade</span></div>' +
+            '<div class="valcard"><b>T</b><span>Transformação</span></div>' +
+            '<div class="valcard"><b>O</b><span>Objetivo</span></div>' +
+            '</div>' +
+            '<p class="abouttext">Esses são os princípios que representam nossa marca e orientam cada decisão que tomamos.</p>' +
+            '<p class="abouttext">Não queremos apenas vender produtos. Queremos transformar a maneira como as pessoas compram, oferecendo variedade, qualidade, agilidade e uma experiência que faça a diferença.</p>' +
+            '<div class="aboutslogan">VOTO. Tudo o que você precisa, em um só lugar.</div>' +
+            '<a class="btn2" href="#">Voltar ao início</a>' +
+            '</div>' +
             '</div></div>'
           );
         }
@@ -1428,12 +1452,12 @@ function heroHTML() {
         function footHTML() {
           return (
             '<div class="in footin">' +
-            '<div class="footcol brand"><b>Voto</b><p>Materiais escolares e uniformes com entrega rápida e atendimento próximo.</p>' +
+            '<div class="footcol brand"><b>Voto</b><p>Loja de variedades com tudo o que você precisa em um só lugar. Atendimento 24h e entrega expressa.</p>' +
             '<a class="btn2" href="https://wa.me/' +
             WA +
             '" target="_blank" rel="noopener">' +
             ic('chat', 18) +
-            ' Falar no WhatsApp</a></div>' +
+            ' Falar com a Luna</a></div>' +
             '<div class="footcol"><b>Ajuda</b>' +
             '<a href="#sobre">Sobre a Voto</a>' +
             '<a href="#mais">Entrega e contato</a>' +
@@ -1446,8 +1470,8 @@ function heroHTML() {
             '" target="_blank" rel="noopener">' +
             WA_TXT +
             '</a>' +
-            '<span>Seg a sex, 9h às 18h</span>' +
-            '<span>Jundiaí e Várzea Paulista</span></div>' +
+            '<span>Atendimento 24h com a Luna</span>' +
+            '<span>Entrega expressa nas regiões atendidas</span></div>' +
             '</div>' +
             '<div class="footbar"><div class="in">© ' +
             new Date().getFullYear() +
