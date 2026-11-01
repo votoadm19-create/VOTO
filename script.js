@@ -27,14 +27,53 @@
             opts.body = JSON.stringify(opts.body);
             opts.headers['Content-Type'] = 'application/json';
           }
-          return fetch(url, opts).then(function (r) {
-            return r.json().catch(function () {
-              return {};
-            }).then(function (d) {
-              if (!r.ok) throw new Error(d.erro || 'Não foi possível concluir.');
-              return d;
+          return fetch(url, opts)
+            .catch(function () {
+              throw new Error(
+                'Não foi possível conectar ao servidor. Inicie o site com "npm start" e acesse http://localhost:3000.'
+              );
+            })
+            .then(function (r) {
+              return r.text().then(function (text) {
+                var d = {};
+                var valido = false;
+                if (text) {
+                  try {
+                    d = JSON.parse(text);
+                    valido = true;
+                  } catch (e) {
+                    d = {};
+                  }
+                }
+                if (!r.ok || !valido) {
+                  var motivo = d.erro;
+                  if (!motivo && !valido) {
+                    motivo =
+                      'O servidor respondeu de forma inesperada (HTTP ' +
+                      r.status +
+                      '). Inicie o site com "npm start" e acesse http://localhost:3000.';
+                  }
+                  if (!motivo)
+                    motivo =
+                      'Falha no servidor (HTTP ' +
+                      r.status +
+                      '). Tente novamente em instantes.';
+                  try {
+                    console.error(
+                      '[VOTO] ' +
+                        (opts.method || 'GET') +
+                        ' ' +
+                        url +
+                        ' -> ' +
+                        r.status,
+                      text || '(resposta vazia)'
+                    );
+                  } catch (e) {}
+                  throw new Error(motivo);
+                }
+                return d;
+              });
             });
-          });
         }
         var CFG = window.VOTO_CONFIG || {};
         var WA = CFG.whatsapp || '5511947400141',
@@ -71,6 +110,16 @@
             '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0112 7.6 4.3 4.3 0 0119.5 10c0 5.4-7.5 10-7.5 10z"/>',
           sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
           moon: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
+          clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+          user: '<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0116 0"/>',
+          mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+          phone:
+            '<path d="M5 3h3l2 5-2.5 1.5a12 12 0 005 5L14 12l5 2v3a2 2 0 01-2 2A15 15 0 013 5a2 2 0 012-2z"/>',
+          shield:
+            '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+          logout:
+            '<path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h9"/>',
+          chevron: '<path d="M9 18l6-6-6-6"/>',
         };
         function ic(n, s) {
           s = s || 24;
@@ -568,6 +617,7 @@
           authTab: 'login',
           favs: [],
           favProducts: [],
+          editOpen: false,
         };
         var VIEW = 'home';
         try {
@@ -682,6 +732,50 @@
             d.slice(9)
           );
         }
+        function fmtPhone(v) {
+          var d = String(v || '').replace(/\D/g, '');
+          if (d.length === 11) {
+            return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+          }
+          if (d.length === 10) {
+            return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+          }
+          return v || '';
+        }
+        function maskCPF(v) {
+          var d = String(v || '').replace(/\D/g, '').slice(0, 11);
+          return d
+            .replace(/^(\d{3})(\d)/, '$1.$2')
+            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+        }
+        function maskPhone(v) {
+          var d = String(v || '').replace(/\D/g, '').slice(0, 11);
+          if (d.length <= 2) return d;
+          if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+          if (d.length <= 10)
+            return (
+              '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6)
+            );
+          return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+        }
+        function waNumber(v) {
+          var d = String(v || '').replace(/\D/g, '');
+          if (!d) return '';
+          if (d.indexOf('55') === 0 && d.length > 11) return d;
+          return '55' + d;
+        }
+        function fmtDate(iso) {
+          if (!iso) return '';
+          try {
+            var dt = new Date(iso);
+            if (isNaN(dt.getTime())) return '';
+            var months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            return months[dt.getMonth()] + ' de ' + dt.getFullYear();
+          } catch (e) {
+            return '';
+          }
+        }
 
         function cartAdd(key, nome, preco, qtd, det, pid) {
           var f = S.cart.find(function (i) {
@@ -720,6 +814,34 @@
           for (var i = 0; i < nbs.length; i++)
             nbs[i].textContent = n ? String(n) : '';
         }
+        function updateAccountBtn() {
+          var btn = document.getElementById('accountbtn');
+          if (!btn) return;
+          if (S.user) {
+            var initial = (S.user.nome || '?').charAt(0).toUpperCase();
+            if (S.user.foto) {
+              btn.innerHTML =
+                '<img class="nav-avatar" src="' +
+                h(S.user.foto) +
+                '" alt="' +
+                h(S.user.nome) +
+                '">';
+            } else {
+              btn.innerHTML =
+                '<span class="nav-initial">' + h(initial) + '</span>';
+            }
+            btn.setAttribute('aria-label', 'Minha conta (' + S.user.nome + ')');
+            btn.classList.add('logged');
+          } else {
+            btn.innerHTML =
+              '<svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<circle cx="12" cy="8" r="3.6" />' +
+              '<path d="M4.5 20a7.5 7.5 0 0115 0" />' +
+              '</svg>';
+            btn.setAttribute('aria-label', 'Minha conta');
+            btn.classList.remove('logged');
+          }
+        }
 
         function customerLines() {
           var L = [];
@@ -727,7 +849,7 @@
             L.push('Nome: ' + S.user.nome);
             if (S.user.cpf) L.push('CPF: ' + fmtCPF(S.user.cpf));
             if (S.user.email) L.push('E-mail: ' + S.user.email);
-            if (S.user.telefone) L.push('WhatsApp: ' + S.user.telefone);
+            if (S.user.telefone) L.push('WhatsApp: ' + fmtPhone(S.user.telefone));
             L.push('');
           }
           return L;
@@ -1377,12 +1499,30 @@ function heroHTML() {
             '<li>' +
             ic('check', 22) +
             '<span>O pagamento é feito pelo WhatsApp, com Pix. Nada é cobrado no site.</span></li></ul></div>' +
-            '<div class="panel"><div style="font-weight:700">Minha conta</div><p style="margin:6px 0 12px;color:var(--muted);font-size:14px">' +
+            '<div class="panel"><div style="font-weight:700">Minha conta</div>' +
             (S.user
-              ? 'Você está conectado como ' + h(S.user.nome) + '.'
-              : 'Crie sua conta para acompanhar seus pedidos.') +
-            '</p><a class="btn2" href="#conta">' +
-            (S.user ? 'Ver minha conta' : 'Entrar ou criar conta') +
+              ? '<div class="accountbox-more"><div class="avatar">' +
+                (S.user.foto
+                  ? '<img src="' +
+                    h(S.user.foto) +
+                    '" alt="' +
+                    h(S.user.nome) +
+                    '">'
+                  : h((S.user.nome || '?').charAt(0).toUpperCase())) +
+                '</div><div><div style="font-weight:700">' +
+                h(S.user.nome) +
+                '</div><div style="color:var(--muted);font-size:13px">' +
+                h(S.user.email) +
+                '</div>' +
+                (S.user.telefone
+                  ? '<div style="color:var(--muted);font-size:13px">' +
+                    h(fmtPhone(S.user.telefone)) +
+                    '</div>'
+                  : '') +
+                '</div></div>'
+              : '<p style="margin:6px 0 12px;color:var(--muted);font-size:14px">Crie sua conta para acompanhar seus pedidos.</p>') +
+            '<a class="btn2" href="#conta">' +
+            (S.user ? 'Gerenciar minha conta' : 'Entrar ou criar conta') +
             '</a></div>' +
             '<div class="panel"><div style="font-weight:700">WhatsApp da Voto</div><div class="copyrow"><span id="wanum">' +
             WA_TXT +
@@ -1513,29 +1653,56 @@ function heroHTML() {
             list
               .map(function (o) {
                 var itens = Array.isArray(o.itens) ? o.itens : [];
-                return (
-                  '<div class="orderitem"><div class="ohead"><span>Pedido #' +
+                var stClass = 'status-' + (o.status || 'novo');
+                var waMsg =
+                  'Olá! Gostaria de informações sobre meu Pedido #' +
                   o.id +
-                  '</span><span>' +
+                  ' (' +
                   fmt(o.total) +
-                  '</span></div><div style="color:var(--muted);font-size:12px;margin-bottom:6px">' +
+                  ').';
+                return (
+                  '<div class="orderitem">' +
+                  '<div class="ohead">' +
+                  '<span class="onum">Pedido #' +
+                  o.id +
+                  '</span>' +
+                  '<span class="ostatus ' +
+                  stClass +
+                  '">' +
                   h(OST[o.status] || o.status) +
-                  ' · ' +
+                  '</span>' +
+                  '</div>' +
+                  '<div class="ometa">' +
+                  (o.criado_em ? fmtDate(o.criado_em) + ' · ' : '') +
                   h(o.cidade || '') +
-                  '</div><ul class="oitems">' +
+                  '</div>' +
+                  '<ul class="oitems">' +
                   itens
                     .map(function (i) {
                       var qtd = i.qtd || 1;
                       return (
                         '<li>' +
                         h(qtd + 'x ' + (i.nome || 'Item')) +
-                        ' — ' +
+                        ' — <b>' +
                         fmt((i.preco || 0) * qtd) +
-                        '</li>'
+                        '</b></li>'
                       );
                     })
                     .join('') +
-                  '</ul></div>'
+                  '</ul>' +
+                  '<div class="ofoot">' +
+                  '<div class="ototal"><small>Total</small><b>' +
+                  fmt(o.total) +
+                  '</b></div>' +
+                  '<a class="obtn" href="https://wa.me/' +
+                  WA +
+                  '?text=' +
+                  encodeURIComponent(waMsg) +
+                  '" target="_blank" rel="noopener">' +
+                  ic('chat', 15) +
+                  ' Falar sobre este pedido</a>' +
+                  '</div>' +
+                  '</div>'
                 );
               })
               .join('') +
@@ -1548,6 +1715,11 @@ function heroHTML() {
           apiJSON('/api/auth/orders')
             .then(function (list) {
               S.orders = list;
+              var app = document.getElementById('app');
+              if (VIEW === 'conta' && app) {
+                app.innerHTML = vAccount();
+                return;
+              }
               var box = document.getElementById('ordersBox');
               if (box) box.innerHTML = ordersHTML(list);
             })
@@ -1578,7 +1750,7 @@ function heroHTML() {
                 : '') +
               '<label>E-mail<input name="email" type="email" autocomplete="email" required></label>' +
               (reg
-                ? '<label>Telefone / WhatsApp<input name="telefone" autocomplete="tel" placeholder="(11) 90000-0000"></label>'
+                ? '<label>Telefone / WhatsApp<input name="telefone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000"></label>'
                 : '') +
               '<label>Senha<input name="senha" type="password" autocomplete="' +
               (reg ? 'new-password' : 'current-password') +
@@ -1595,57 +1767,241 @@ function heroHTML() {
           var avatar = S.user.foto
             ? '<img src="' + h(S.user.foto) + '" alt="Foto de ' + h(S.user.nome) + '">'
             : h(initial);
-          var cpfVal = String(S.user.cpf || '').replace(/\D/g, '');
+          var formattedCPF = S.user.cpf ? fmtCPF(S.user.cpf) : '';
+          var formattedPhone = S.user.telefone ? fmtPhone(S.user.telefone) : '';
+          var memberSince = S.user.criado_em ? fmtDate(S.user.criado_em) : '';
+          var orderCount = S.orders ? S.orders.length : 0;
+          var favCount = S.favs ? S.favs.length : 0;
+
+          var ordersList = S.orders || [];
+          var stCounts = { novo: 0, confirmado: 0, enviado: 0, entregue: 0, cancelado: 0 };
+          ordersList.forEach(function (o) {
+            if (stCounts[o.status] !== undefined) stCounts[o.status]++;
+          });
+
           return (
             head +
-            '<div class="panel"><div class="accountbox"><div class="avatar">' +
+            // 1. Hero Card do Perfil (Estilo Shopee / Mercado Livre)
+            '<div class="shopee-hero-card">' +
+            '<div class="shopee-hero-avatar">' +
             avatar +
-            '</div><div><div style="font-weight:700">' +
-            h(S.user.nome) +
-            '</div><div style="color:var(--muted);font-size:13px">' +
-            h(S.user.email) +
+            '<label class="shopee-avatar-btn" title="Alterar foto" aria-label="Alterar foto de perfil">' +
+            ic('pencil', 13) +
+            '<input type="file" id="profFile" accept="image/*" aria-label="Alterar foto de perfil">' +
+            '</label>' +
             '</div>' +
-            (S.user.cpf
-              ? '<div style="color:var(--muted);font-size:13px">CPF: ' +
-                h(fmtCPF(S.user.cpf)) +
-                '</div>'
+            '<div class="shopee-hero-info">' +
+            '<div class="shopee-user-name">' +
+            h(S.user.nome) +
+            '</div>' +
+            '<div class="shopee-user-badge">' +
+            ic('star', 13) +
+            '<span>Cliente VOTO · ' +
+            h(memberSince || 'Conta ativa') +
+            '</span></div>' +
+            '<div class="shopee-user-contacts">' +
+            '<span title="' +
+            h(S.user.email) +
+            '">' +
+            ic('mail', 13) +
+            ' ' +
+            h(S.user.email) +
+            '</span>' +
+            (formattedPhone
+              ? '<a href="https://wa.me/' +
+                waNumber(S.user.telefone) +
+                '" target="_blank" rel="noopener" title="Falar no WhatsApp">' +
+                ic('phone', 13) +
+                ' ' +
+                h(formattedPhone) +
+                '</a>'
               : '') +
-            (S.user.telefone
-              ? '<div style="color:var(--muted);font-size:13px">' +
-                h(S.user.telefone) +
-                '</div>'
+            '</div>' +
+            '</div>' +
+            '<button type="button" class="shopee-edit-btn" data-a="toggle-edit" title="Editar dados cadastrais" aria-label="Editar dados cadastrais" aria-expanded="' +
+            (S.editOpen ? 'true' : 'false') +
+            '">' +
+            ic('pencil', 16) +
+            '</button>' +
+            '</div>' +
+
+            // 2. Barra de Rastreamento de Pedidos (Estilo Shopee "Minhas Compras")
+            '<div class="panel shopee-tracker-card">' +
+            '<div class="shopee-tracker-head">' +
+            '<div><b>Minhas Compras</b><span>Acompanhe seus pedidos em tempo real</span></div>' +
+            '<a href="#ordersBox" data-a="scroll-orders" class="shopee-tracker-link">Ver histórico ' +
+            ic('chevron', 14) +
+            '</a>' +
+            '</div>' +
+            '<div class="shopee-tracker-grid">' +
+            '<a class="tracker-step" href="#ordersBox" data-a="scroll-orders">' +
+            '<div class="tracker-icon">' +
+            ic('clock', 22) +
+            (stCounts.novo
+              ? '<span class="tbadge">' + stCounts.novo + '</span>'
               : '') +
-            '</div></div>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">' +
-            '<a class="btn2" href="#" data-a="cat" data-v="tudo" style="max-width:220px">Continuar comprando</a>' +
-            '<button class="btn2" data-a="logout" style="max-width:180px">Sair da conta</button>' +
-            '</div></div>' +
-            '<div class="panel"><div class="phead"><b>Meus dados</b><span>Mantenha seu cadastro atualizado</span></div>' +
+            '</div>' +
+            '<span>Pendente</span>' +
+            '</a>' +
+            '<a class="tracker-step" href="#ordersBox" data-a="scroll-orders">' +
+            '<div class="tracker-icon">' +
+            ic('box', 22) +
+            (stCounts.confirmado
+              ? '<span class="tbadge">' + stCounts.confirmado + '</span>'
+              : '') +
+            '</div>' +
+            '<span>Preparando</span>' +
+            '</a>' +
+            '<a class="tracker-step" href="#ordersBox" data-a="scroll-orders">' +
+            '<div class="tracker-icon">' +
+            ic('truck', 22) +
+            (stCounts.enviado
+              ? '<span class="tbadge">' + stCounts.enviado + '</span>'
+              : '') +
+            '</div>' +
+            '<span>A Caminho</span>' +
+            '</a>' +
+            '<a class="tracker-step" href="#ordersBox" data-a="scroll-orders">' +
+            '<div class="tracker-icon">' +
+            ic('check', 22) +
+            (stCounts.entregue
+              ? '<span class="tbadge">' + stCounts.entregue + '</span>'
+              : '') +
+            '</div>' +
+            '<span>Entregues</span>' +
+            '</a>' +
+            '</div>' +
+            '</div>' +
+
+            // 3. Hub de Atalhos Rápidos (Shopee / Amazon style)
+            '<div class="shopee-hub-grid">' +
+            '<a class="hub-card" href="#favBox" data-a="scroll-favs">' +
+            '<div class="hub-icon heart">' +
+            ic('heart', 20) +
+            '</div>' +
+            '<b>Favoritos</b><small>' +
+            favCount +
+            ' salvos</small>' +
+            '</a>' +
+            '<a class="hub-card" href="#ordersBox" data-a="scroll-orders">' +
+            '<div class="hub-icon bag">' +
+            ic('bag', 20) +
+            '</div>' +
+            '<b>Pedidos</b><small>' +
+            orderCount +
+            ' feitos</small>' +
+            '</a>' +
+            '<a class="hub-card" href="https://wa.me/' +
+            WA +
+            '" target="_blank" rel="noopener">' +
+            '<div class="hub-icon chat">' +
+            ic('chat', 20) +
+            '</div>' +
+            '<b>Luna 24h</b><small>WhatsApp</small>' +
+            '</a>' +
+            '<a class="hub-card" href="#" data-a="cat" data-v="top">' +
+            '<div class="hub-icon star">' +
+            ic('star', 20) +
+            '</div>' +
+            '<b>Destaques</b><small>Ofertas</small>' +
+            '</a>' +
+            '</div>' +
+
+            // 4. Central de Serviços & Configurações da Conta (Estilo Amazon "Sua Conta")
+            '<div class="panel amazon-menu-card">' +
+            '<button type="button" class="amazon-menu-item" data-a="toggle-edit" aria-expanded="' +
+            (S.editOpen ? 'true' : 'false') +
+            '">' +
+            '<div class="amz-icon">' +
+            ic('pencil', 18) +
+            '</div>' +
+            '<div class="amz-text"><b>Meus Dados Cadastrais</b><small id="editHint">' +
+            (S.editOpen ? 'Ocultar formulário de dados' : 'Nome, CPF, Telefone e Foto de perfil') +
+            '</small></div>' +
+            '<div class="amz-arrow">' +
+            ic('chevron', 16) +
+            '</div>' +
+            '</button>' +
+            '<button type="button" class="amazon-menu-item" data-a="theme" aria-label="Alternar modo escuro e claro">' +
+            '<div class="amz-icon">' +
+            ic('moon', 18) +
+            '</div>' +
+            '<div class="amz-text"><b>Aparência do App</b><small>Alternar Modo Escuro / Claro</small></div>' +
+            '<div class="amz-arrow">' +
+            ic('chevron', 16) +
+            '</div>' +
+            '</button>' +
+            '<a class="amazon-menu-item" href="#sobre">' +
+            '<div class="amz-icon">' +
+            ic('star', 18) +
+            '</div>' +
+            '<div class="amz-text"><b>Sobre a VOTO</b><small>Conheça nossa empresa e valores</small></div>' +
+            '<div class="amz-arrow">' +
+            ic('chevron', 16) +
+            '</div>' +
+            '</a>' +
+            '<button type="button" class="amazon-menu-item logout" data-a="logout">' +
+            '<div class="amz-icon">' +
+            ic('logout', 18) +
+            '</div>' +
+            '<div class="amz-text"><b>Sair da Conta</b><small>Encerrar sessão com segurança</small></div>' +
+            '<div class="amz-arrow">' +
+            ic('chevron', 16) +
+            '</div>' +
+            '</button>' +
+            '</div>' +
+
+            // 5. Formulário "Meus dados" (Expansível)
+            '<div class="panel edit-panel" id="editPanel" aria-hidden="' +
+            (S.editOpen ? 'false' : 'true') +
+            '" style="' +
+            (S.editOpen ? '' : 'display:none') +
+            '">' +
+            '<div class="phead"><b>Meus dados cadastrais</b><span>Mantenha seu cadastro atualizado</span></div>' +
             '<form id="profileForm" class="authform" novalidate>' +
             '<div class="fotorow"><div class="avatar big" id="profPrev">' +
             avatar +
-            '</div><label class="btn2 filebtn">Trocar foto<input type="file" id="profFile" accept="image/*"></label></div>' +
-            '<label>Nome<input name="nome" value="' +
+            '</div><div class="fotobuttons">' +
+            '<label class="btn2 filebtn">' +
+            ic('pencil', 16) +
+            ' Trocar foto<input type="file" id="profFile2" accept="image/*"></label>' +
+            (S.user.foto
+              ? '<button type="button" class="btn2 delbtn" data-a="rmfoto">' +
+                ic('trash', 16) +
+                ' Remover foto</button>'
+              : '') +
+            '</div></div>' +
+            '<label>Nome completo<input name="nome" value="' +
             h(S.user.nome) +
             '" autocomplete="name" required></label>' +
             '<label>CPF<input name="cpf" inputmode="numeric" value="' +
-            h(cpfVal) +
-            '" placeholder="000.000.000-00"></label>' +
+            h(formattedCPF) +
+            '" placeholder="000.000.000-00" maxlength="14"></label>' +
             '<label>Telefone / WhatsApp<input name="telefone" value="' +
-            h(S.user.telefone || '') +
-            '" autocomplete="tel" placeholder="(11) 90000-0000"></label>' +
+            h(formattedPhone || S.user.telefone || '') +
+            '" autocomplete="tel" inputmode="tel" maxlength="15" placeholder="(11) 90000-0000"></label>' +
             '<label>E-mail<input value="' +
             h(S.user.email) +
             '" disabled></label>' +
             '<p class="authmsg" id="profMsg" role="alert"></p>' +
-            '<button class="btn1" type="submit">Salvar dados</button></form></div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+            '<button class="btn1" type="submit" style="flex:1">Salvar dados</button>' +
+            '<button type="button" class="btn2" data-a="toggle-edit" style="max-width:140px">Fechar</button>' +
+            '</div></form></div>' +
+
+            // 6. Minhas compras (Estilo Shopee/Amazon)
             '<div class="panel"><div class="phead"><b>Minhas compras</b><span>' +
-            (S.orders ? S.orders.length : '') +
+            (S.orders
+              ? S.orders.length +
+                (S.orders.length === 1 ? ' pedido' : ' pedidos')
+              : 'Carregando...') +
             '</span></div><div id="ordersBox">' +
             (S.orders
               ? ordersHTML(S.orders)
               : '<p class="oempty">Carregando pedidos...</p>') +
             '</div></div>' +
+
+            // 7. Meus favoritos
             '<div class="panel"><div class="phead"><b>Meus favoritos</b><span id="favCount">' +
             S.favs.length +
             '</span></div><div id="favBox">' +
@@ -1744,6 +2100,7 @@ function heroHTML() {
           $('#navtop').innerHTML = navHTML();
           $('#cidade').value = S.cidade;
           updateBadge();
+          updateAccountBtn();
           window.scrollTo(0, 0);
         }
         function go(h) {
@@ -1939,6 +2296,35 @@ function heroHTML() {
           } else if (a === 'authtab') {
             S.authTab = v;
             route();
+          } else if (a === 'toggle-edit') {
+            e.preventDefault();
+            S.editOpen = !S.editOpen;
+            var editPanel = document.getElementById('editPanel');
+            if (editPanel) {
+              editPanel.style.display = S.editOpen ? '' : 'none';
+              editPanel.setAttribute(
+                'aria-hidden',
+                S.editOpen ? 'false' : 'true'
+              );
+              if (S.editOpen)
+                editPanel.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                });
+            }
+            var editHint = document.getElementById('editHint');
+            if (editHint)
+              editHint.textContent = S.editOpen
+                ? 'Ocultar formulário de dados'
+                : 'Nome, CPF, Telefone e Foto de perfil';
+            document
+              .querySelectorAll('[data-a="toggle-edit"]')
+              .forEach(function (btn) {
+                btn.setAttribute(
+                  'aria-expanded',
+                  S.editOpen ? 'true' : 'false'
+                );
+              });
           } else if (a === 'logout') {
             apiJSON('/api/auth/logout', { method: 'POST' })
               .catch(function () {})
@@ -1948,6 +2334,7 @@ function heroHTML() {
                 S.favs = [];
                 S.favProducts = [];
                 S.authTab = 'login';
+                S.editOpen = false;
                 toast('Você saiu da conta');
                 route();
               });
@@ -1957,6 +2344,37 @@ function heroHTML() {
                 method: 'POST',
                 body: orderPayload(),
               }).catch(function () {});
+          } else if (a === 'rmfoto') {
+            if (!S.user || !S.user.foto) return;
+            apiJSON('/api/auth/profile', {
+              method: 'PUT',
+              body: {
+                nome: S.user.nome,
+                cpf: S.user.cpf ? String(S.user.cpf).replace(/\D/g, '') : '',
+                telefone: S.user.telefone || '',
+                foto: '',
+              },
+            })
+              .then(function (res) {
+                S.user = res.cliente;
+                toast('Foto de perfil removida');
+                route();
+              })
+              .catch(function (err) {
+                toast(err.message || 'Erro ao remover foto');
+              });
+          } else if (a === 'scroll-orders') {
+            e.preventDefault();
+            var el = document.getElementById('ordersBox');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          } else if (a === 'scroll-favs') {
+            e.preventDefault();
+            var el = document.getElementById('favBox');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          } else if (a === 'scroll-edit') {
+            e.preventDefault();
+            var el = document.getElementById('editPanel');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
           } else if (a === 'theme') {
             applyTheme(
               document.documentElement.dataset.theme === 'dark'
@@ -2050,20 +2468,37 @@ function heroHTML() {
 
           var msg = document.getElementById('authMsg');
           var reg = S.authTab === 'register';
-          var email = form.querySelector('[name="email"]').value.trim();
-          var senha = form.querySelector('[name="senha"]').value;
+          var emailEl = form.querySelector('[name="email"]');
+          var senhaEl = form.querySelector('[name="senha"]');
           var nomeEl = form.querySelector('[name="nome"]');
           var telEl = form.querySelector('[name="telefone"]');
-          msg.textContent = '';
-          if (!email || !senha || (reg && !nomeEl.value.trim())) {
-            msg.textContent = 'Preencha os campos obrigatórios.';
+          var email = emailEl ? emailEl.value.trim() : '';
+          var senha = senhaEl ? senhaEl.value : '';
+          if (msg) msg.textContent = '';
+          if (reg && (!nomeEl || !telEl)) {
+            if (msg)
+              msg.textContent = 'Recarregue a página e tente novamente.';
+            return;
+          }
+          var nome = nomeEl ? nomeEl.value.trim() : '';
+          if (!email || !senha || (reg && !nome)) {
+            if (msg) msg.textContent = 'Preencha os campos obrigatórios.';
+            return;
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            if (msg) msg.textContent = 'Informe um e-mail válido.';
+            return;
+          }
+          if (reg && String(senha).length < 6) {
+            if (msg)
+              msg.textContent = 'A senha precisa ter pelo menos 6 caracteres.';
             return;
           }
           btn.disabled = true;
           btn.textContent = 'Aguarde...';
           var body = { email: email, senha: senha };
           if (reg) {
-            body.nome = nomeEl.value.trim();
+            body.nome = nome;
             body.telefone = telEl.value.trim();
           }
           apiJSON(reg ? '/api/auth/register' : '/api/auth/login', {
@@ -2071,23 +2506,48 @@ function heroHTML() {
             body: body,
           })
             .then(function (data) {
+              if (!data || !data.cliente)
+                throw new Error(
+                  'Resposta inesperada do servidor. Tente novamente.'
+                );
               S.user = data.cliente;
               S.orders = null;
-              return refreshFavs().then(function () {
-                toast(
-                  'Bem-vindo(a), ' + data.cliente.nome.split(' ')[0] + '!'
-                );
-                route();
+              toast('Bem-vindo(a), ' + data.cliente.nome.split(' ')[0] + '!');
+              route();
+              refreshFavs().then(function () {
+                if (VIEW !== 'conta') return;
+                var favBox = document.getElementById('favBox');
+                if (favBox) favBox.innerHTML = favoritesHTML();
+                var favCountEl = document.getElementById('favCount');
+                if (favCountEl) favCountEl.textContent = S.favs.length;
               });
             })
             .catch(function (err) {
-              msg.textContent = err.message;
+              if (msg) msg.textContent = err.message;
             })
             .then(function () {
               btn.disabled = false;
               btn.textContent = label;
             });
         });
+        function showUnexpectedError(ev) {
+          var detail =
+            (ev && ev.message) ||
+            (ev && ev.reason && (ev.reason.message || ev.reason)) ||
+            '';
+          try {
+            console.error('[VOTO] erro inesperado:', detail || ev);
+          } catch (e) {}
+          var el =
+            document.getElementById('authMsg') ||
+            document.getElementById('profMsg');
+          if (el && !el.textContent)
+            el.textContent =
+              'Não foi possível concluir' +
+              (detail ? ': ' + detail : '. Recarregue a página e tente novamente.');
+        }
+        window.addEventListener('error', showUnexpectedError);
+        window.addEventListener('unhandledrejection', showUnexpectedError);
         document.addEventListener('change', function (e) {
           if (e.target.id === 'profFile') {
             var file = e.target.files && e.target.files[0];
@@ -2097,6 +2557,7 @@ function heroHTML() {
               e.target.value = '';
               return;
             }
+            toast('Enviando foto...');
             var reader = new FileReader();
             reader.onload = function () {
               apiJSON('/api/auth/upload', {
@@ -2104,19 +2565,23 @@ function heroHTML() {
                 body: { dataUrl: reader.result },
               })
                 .then(function (data) {
-                  S.user.foto = data.url;
-                  var prev = document.getElementById('profPrev');
-                  if (prev)
-                    prev.innerHTML =
-                      '<img src="' +
-                      h(data.url) +
-                      '" alt="Foto de ' +
-                      h(S.user.nome) +
-                      '">';
-                  toast('Foto atualizada');
+                  return apiJSON('/api/auth/profile', {
+                    method: 'PUT',
+                    body: {
+                      nome: S.user.nome,
+                      cpf: S.user.cpf ? String(S.user.cpf).replace(/\D/g, '') : '',
+                      telefone: S.user.telefone || '',
+                      foto: data.url,
+                    },
+                  });
+                })
+                .then(function (res) {
+                  S.user = res.cliente;
+                  toast('Foto de perfil atualizada!');
+                  route();
                 })
                 .catch(function (err) {
-                  toast(err.message);
+                  toast(err.message || 'Erro ao atualizar foto');
                 });
             };
             reader.readAsDataURL(file);
@@ -2140,6 +2605,12 @@ function heroHTML() {
                 parseInt(e.target.value, 10) || 1
               );
           }
+        });
+        document.addEventListener('input', function (e) {
+          var el = e.target;
+          if (!el || !el.form || el.form.id !== 'profileForm') return;
+          if (el.name === 'cpf') el.value = maskCPF(el.value);
+          else if (el.name === 'telefone') el.value = maskPhone(el.value);
         });
         $('#q').addEventListener('input', function (e) {
           S.q = e.target.value;

@@ -1712,6 +1712,223 @@
   opacity: 0;
   cursor: pointer;
 }
+/* Perfil do cliente enriquecido */
+.profilecard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.profile-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--chip-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 26px;
+  flex: none;
+  overflow: hidden;
+  border: 2px solid var(--line);
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-meta h3 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.profile-badge svg {
+  color: var(--brand);
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  background: var(--tile);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+@media (min-width: 600px) {
+  .profile-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink);
+  padding: 4px 0;
+}
+.profile-item svg {
+  color: var(--brand);
+  flex: none;
+}
+.profile-item small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.profile-item b {
+  font-size: 13px;
+  color: var(--ink);
+}
+.profile-item .empty-field {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+}
+.wa-btn-tiny {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff !important;
+  margin-left: auto;
+  flex: none;
+  text-decoration: none;
+}
+.wa-btn-tiny svg {
+  color: #fff !important;
+}
+.profile-stats {
+  display: flex;
+  gap: 10px;
+}
+.stat-pill {
+  flex: 1;
+  background: var(--tile);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.stat-pill:hover {
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+.stat-pill b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand);
+}
+.stat-pill span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.profile-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.profile-actions .btn1,
+.profile-actions .btn2 {
+  flex: 1 1 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.profile-actions .logoutbtn {
+  color: #d9480f;
+}
+.fotobuttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.delbtn {
+  max-width: 180px;
+  color: #d9480f;
+  border-color: rgba(217, 72, 15, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.delbtn:hover {
+  background: rgba(217, 72, 15, 0.08);
+}
+.accountbox-more {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+.accountbox-more .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--chip-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  overflow: hidden;
+  flex: none;
+}
+.accountbox-more .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Avatar do cabeçalho superior */
+.accountbtn.logged {
+  padding: 0;
+}
+.nav-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: block;
+}
+.nav-initial {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--chip-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
 .authform textarea,
 .reviewform textarea,
 .reviewform select {
@@ -1869,5 +2086,489 @@
   }
   .footcol.brand {
     grid-column: 1 / -1;
+  }
+}
+
+/* ===== Página de perfil do usuário ===== */
+#app[data-view='conta'] .stack {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.shopee-hero-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--brand) 0%, #ff9a3c 100%);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(255, 107, 0, 0.22);
+  overflow: hidden;
+}
+.shopee-hero-card::after {
+  content: '';
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  right: -70px;
+  top: -90px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+}
+.shopee-hero-avatar {
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  font-size: 30px;
+  font-weight: 800;
+  color: #fff;
+  text-transform: uppercase;
+}
+.shopee-hero-avatar > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.shopee-avatar-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--brand);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.shopee-avatar-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.shopee-hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.shopee-user-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopee-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.shopee-user-badge svg {
+  flex: none;
+}
+.shopee-user-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopee-user-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.92);
+}
+.shopee-user-contacts span,
+.shopee-user-contacts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopee-user-contacts a:hover {
+  text-decoration: underline;
+}
+.shopee-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s;
+}
+.shopee-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* Rastreamento de pedidos */
+.shopee-tracker-card {
+  gap: 14px;
+}
+.shopee-tracker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.shopee-tracker-head b {
+  display: block;
+  font-size: 15.5px;
+}
+.shopee-tracker-head span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.shopee-tracker-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--brand);
+}
+.shopee-tracker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.tracker-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border-radius: 12px;
+  color: var(--ink);
+  transition: background 0.15s;
+}
+.tracker-step:hover {
+  background: var(--tile);
+}
+.tracker-step > span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+.tracker-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--tile);
+  color: var(--brand);
+}
+.tbadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--pill);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* Atalhos rápidos */
+.shopee-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.hub-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 4px 12px;
+  border-radius: 14px;
+  background: var(--card);
+  text-align: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.hub-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+.hub-card b {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.hub-card small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.hub-icon {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.hub-icon.heart {
+  background: rgba(224, 69, 123, 0.14);
+  color: #e0457b;
+}
+.hub-icon.bag {
+  background: rgba(255, 107, 0, 0.14);
+  color: var(--brand);
+}
+.hub-icon.chat {
+  background: rgba(31, 168, 85, 0.14);
+  color: #1fa855;
+}
+.hub-icon.star {
+  background: rgba(242, 183, 5, 0.18);
+  color: #c99000;
+}
+
+/* Central de serviços */
+.amazon-menu-card {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.amazon-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  transition: background 0.15s;
+}
+.amazon-menu-item:last-child {
+  border-bottom: 0;
+}
+.amazon-menu-item:hover {
+  background: var(--tile);
+}
+.amz-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--tile);
+  color: var(--brand);
+}
+.amz-text {
+  flex: 1;
+  min-width: 0;
+}
+.amz-text b {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+.amz-text small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.amz-arrow {
+  flex: none;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.amazon-menu-item.logout .amz-icon {
+  background: rgba(217, 72, 15, 0.12);
+  color: #d9480f;
+}
+.amazon-menu-item.logout .amz-text b {
+  color: #d9480f;
+}
+
+/* Meus dados / formulário */
+#ordersBox,
+#favBox,
+.edit-panel {
+  scroll-margin-top: 120px;
+}
+@media (min-width: 900px) {
+  #ordersBox,
+  #favBox,
+  .edit-panel {
+    scroll-margin-top: 84px;
+  }
+}
+
+/* Pedidos */
+.orderlist {
+  gap: 12px;
+}
+.orderitem {
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.orderitem .ohead {
+  align-items: center;
+}
+.onum {
+  font-size: 14px;
+  font-weight: 800;
+}
+.ostatus {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--tile);
+  color: var(--muted);
+}
+.ostatus.status-novo {
+  background: rgba(255, 107, 0, 0.14);
+  color: var(--pill);
+}
+.ostatus.status-confirmado {
+  background: rgba(47, 120, 196, 0.14);
+  color: #2f78c4;
+}
+.ostatus.status-enviado {
+  background: rgba(242, 183, 5, 0.18);
+  color: #a87900;
+}
+.ostatus.status-entregue {
+  background: rgba(11, 138, 75, 0.14);
+  color: var(--good);
+}
+.ostatus.status-cancelado {
+  background: rgba(217, 72, 15, 0.14);
+  color: #d9480f;
+}
+.ometa {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.orderitem .oitems {
+  background: var(--tile);
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+.orderitem .oitems li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+.orderitem .oitems li b {
+  flex: none;
+}
+.ofoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.ototal {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.ototal small {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ototal b {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand);
+}
+.obtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #1fa855;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: filter 0.15s;
+}
+.obtn:hover {
+  filter: brightness(0.94);
+}
+
+@media (max-width: 360px) {
+  .shopee-hero-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 25px;
+  }
+  .shopee-user-name {
+    font-size: 17px;
+  }
+  .hub-card b {
+    font-size: 11.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-card,
+  .tracker-step,
+  .shopee-edit-btn,
+  .obtn {
+    transition: none;
   }
 }
