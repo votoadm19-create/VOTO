@@ -99,6 +99,28 @@
         line-height: 1.35;
         -webkit-text-size-adjust: 100%;
       }
+      body::after {
+  content: '';
+  position: absolute;
+  /* ESSA LINHA É A MÁGICA: começa no final do cabeçalho (aprox 175px no celular) */
+  top: 173px; 
+  left: 0;
+  right: 0;
+  height: 300px; 
+  z-index: -1;
+  pointer-events: none;
+  
+  /* Começa 100% sólido no topo e vai sumindo */
+  background: linear-gradient(to bottom, rgba(252, 101, 3, 1) 0%, rgba(252, 101, 3, 0) 100%);
+}
+
+/* Ajuste para PC (onde o cabeçalho é um pouco mais alto) */
+@media (min-width: 900px) {
+  body::after {
+    top: 215px; 
+    height: 400px;
+  }
+}
       body::before {
         content: '';
         position: fixed;
@@ -155,7 +177,7 @@
         display: flex;
         align-items: center;
         flex: none;
-        background: #fff;
+        background: #fc6503;
         border-radius: 12px;
         padding: 6px 10px;
         height: 42px;
