@@ -1,0 +1,268 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Voto Cupons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/cupons/style.css">
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="10" fill="#ff6b00"/>
+        <path d="M6 14h4M4 19h6M7 24h3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M13 12h3l2.4 11h10.2l2.2-8H17.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="28" r="2" fill="#fff"/><circle cx="27.5" cy="28" r="2" fill="#fff"/>
+      </svg>
+      <span class="word">VOTO</span>
+      <small>Cupons</small>
+    </div>
+    <nav class="nav" aria-label="Seções">
+      <a href="#resumo" data-v="resumo">Resumo</a>
+      <a href="#cupons" data-v="cupons">Cupons</a>
+      <a href="#pedidos" data-v="pedidos">Pedidos</a>
+      <a href="#pagamento" data-v="pagamento">Pagamento</a>
+      <a href="#simulador" data-v="simulador">Simulador</a>
+      <a href="#afiliado" data-v="afiliado" class="aff">Visão do influenciador</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section id="cupons-public" hidden></section>
+
+  <!-- RESUMO -->
+  <section data-view="resumo">
+    <div class="head"><h1>Resumo dos cupons</h1><p>Quanto foi vendido com cupom, quanto de desconto os clientes ganharam e quanto de crédito os influenciadores têm a receber.</p></div>
+    <div class="panel" style="margin-top:22px"><div class="panel-h"><h2>Precisa de ação</h2></div><div class="alerts" id="alerts"></div></div>
+    <div class="stats" id="stats"></div>
+    <div class="cols">
+      <div class="panel"><div class="panel-h"><h2>Ranking de cupons</h2><p>Por valor vendido</p></div><div class="rank" id="rank"></div></div>
+      <div class="panel"><div class="panel-h"><h2>Últimos pedidos com cupom</h2></div><ul class="feed" id="feed"></ul></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Como funciona</h2></div>
+      <ol class="steps">
+        <li>O cliente digita o cupom no carrinho do site. O desconto aparece na hora e o total já vem atualizado.</li>
+        <li>O pedido chega no WhatsApp com o valor final e o cupom. A IA só confirma o que veio, sem recalcular nem validar cupom.</li>
+        <li>O sistema registra a venda com o desconto já aplicado. Se o cupom for de influenciador, o dono ganha crédito.</li>
+        <li>Pedido pago e entregue fica <b class="v-hold"></b> dias em espera, para ver se o cliente cancela ou devolve. Depois disso o crédito é liberado.</li>
+        <li>Todo dia <b class="v-day"></b> a Voto soma o crédito liberado de cada influenciador. Quem chegou a <b class="v-goal"></b> recebe por Pix. Quem não chegou acumula para o mês seguinte.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- CUPONS -->
+  <section data-view="cupons" hidden>
+    <div id="access"></div>
+    <div class="head"><h1>Cupons</h1><p>Crie quantos cupons quiser, cada um com o seu desconto. Cupom de influenciador também dá crédito ao dono e cria o acesso dele ao portal. Só a administração cria contas.</p></div>
+    <div class="panel">
+      <div class="panel-h"><h2>Todos os cupons</h2></div>
+      <div class="tablebox"><table>
+        <thead><tr><th>Cupom</th><th>Tipo</th><th class="r">Desconto</th><th class="r">Crédito</th><th>Situação</th><th class="r">Pedidos</th><th class="r">Vendido</th><th class="r">Crédito liberado</th><th></th></tr></thead>
+        <tbody id="cup-body"></tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Novo cupom e acesso</h2><p>Deixe o código em branco para gerar automático, como LARISSA5. Para influenciador, o e-mail e a senha criam o acesso dele.</p></div>
+      <form class="form" id="new-form" autocomplete="off">
+        <div class="field"><label for="n-kind">Tipo de cupom</label>
+          <select class="sel" id="n-kind"><option value="inf">Influenciador (desconto + crédito)</option><option value="promo">Promocional (só desconto)</option></select></div>
+        <div class="field"><label for="n-name" id="n-name-l">Nome do influenciador</label><input class="inp" id="n-name" required maxlength="40" placeholder="Larissa Prado"></div>
+        <div class="field"><label for="n-code">Código do cupom (opcional)</label><input class="inp" id="n-code" maxlength="14" placeholder="LARISSA5" autocapitalize="characters"><small>4 a 14 letras ou números, sem espaço</small></div>
+        <div class="field"><label for="n-disc">Desconto para o cliente (%)</label><input class="inp" id="n-disc" type="number" min="1" max="50" step="0.5" value="3"></div>
+        <div class="field" data-inf><label for="n-credit">Crédito para o dono (%)</label><input class="inp" id="n-credit" type="number" min="0" max="30" step="0.5" value="3"><small>Base de cálculo: veja as regras abaixo</small></div>
+        <div class="field" data-inf><label for="n-city">Cidade</label><input class="inp" id="n-city" maxlength="30" placeholder="Jundiaí"></div>
+        <div class="field" data-inf><label for="n-pix">Chave Pix</label><input class="inp" id="n-pix" maxlength="40" placeholder="Telefone, e-mail ou CPF"></div>
+        <div class="field" data-inf><label for="n-email">E-mail de acesso</label><input class="inp" id="n-email" type="email" maxlength="60" autocomplete="off" placeholder="influenciador@email.com"><small>Ele entra no portal com esse e-mail</small></div>
+        <div class="field" data-inf><label for="n-pass">Senha provisória</label><div class="coupon-row"><input class="inp" id="n-pass" maxlength="40" autocomplete="off" placeholder="Mínimo 8 caracteres" style="text-transform:none"><button class="btn" type="button" data-action="genpass">Gerar</button></div><small>Você vê a senha só uma vez, depois de criar</small></div>
+        <div class="field"><label>&nbsp;</label><button class="btn big" type="submit">Criar cupom</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Regras de crédito e pagamento</h2><p>Valem para todos os influenciadores</p></div>
+      <form class="form" id="rules-form">
+        <div class="field"><label for="r-disc">Desconto padrão para o cliente (%)</label><input class="inp" id="r-disc" type="number" min="0" max="50" step="0.5"><small>Já vem preenchido em cupom novo</small></div>
+        <div class="field"><label for="r-credit">Crédito padrão do influenciador (%)</label><input class="inp" id="r-credit" type="number" min="0" max="30" step="0.5"><small>Já vem preenchido em cupom novo</small></div>
+        <div class="field"><label for="r-base">Crédito calculado sobre</label><select class="sel" id="r-base"><option value="paid">Valor que o cliente pagou (já com desconto)</option><option value="list">Preço sem desconto</option></select><small>Ex.: compra de R$ 1.000 com 3% e 3% → R$ 29,10 ou R$ 30,00</small></div>
+        <div class="field"><label for="r-portal">Link do portal do influenciador</label><input class="inp" id="r-portal" type="url" maxlength="120" placeholder="https://..." style="text-transform:none; font-family:var(--font-body)"><small>Sai na mensagem de acesso que você envia</small></div>
+        <div class="field"><label for="r-goal">Meta mínima para receber (R$)</label><input class="inp" id="r-goal" type="number" min="0" step="10"><small>Abaixo disso o crédito acumula para o mês seguinte</small></div>
+        <div class="field"><label for="r-day">Dia do pagamento</label><input class="inp" id="r-day" type="number" min="1" max="31" step="1"><small>Em mês mais curto, paga no último dia</small></div>
+        <div class="field"><label for="r-hold">Carência depois da entrega (dias)</label><input class="inp" id="r-hold" type="number" min="0" max="60" step="1"><small>Tempo de espera para ver se o pedido volta</small></div>
+        <div class="field"><label>&nbsp;</label><button class="btn big" type="submit">Salvar regras</button></div>
+      </form>
+      <p class="rules-note">Mudar a carência vale para as próximas entregas. Os cupons e os pedidos que já existem mantêm o que foi combinado no momento da venda.</p>
+    </div>
+  </section>
+
+  <!-- PEDIDOS -->
+  <section data-view="pedidos" hidden>
+    <div class="head"><h1>Pedidos com cupom</h1><p>Cada linha é uma compra feita usando um cupom. Mostra o que o cliente pagou e quanto de crédito essa compra gera para o dono do cupom.</p></div>
+
+    <div class="panel">
+      <details open>
+        <summary>Como ler esta tela</summary>
+        <div class="how">
+          <h3>Colunas</h3>
+          <dl class="defs">
+            <dt>Cupom</dt><dd>O código que o cliente usou. Mostra de quem foi a indicação.</dd>
+            <dt>Cliente pagou</dt><dd>O valor final, já com o desconto. Embaixo aparecem o preço original e o desconto dado.</dd>
+            <dt>Crédito do influenciador</dt><dd>Quanto essa compra rende ao dono do cupom. "Sem dono" quer dizer cupom promocional, que só dá desconto e não gera crédito.</dd>
+          </dl>
+          <h3>Situação do pedido</h3>
+          <dl class="defs">
+            <dt><span class="pill aguardando">Aguardando pagamento</span></dt><dd>O cliente fez o pedido, mas ainda não pagou. Não gera crédito.</dd>
+            <dt><span class="pill entrega">Pago · em entrega</span></dt><dd>O cliente pagou e a Voto ainda vai entregar.</dd>
+            <dt><span class="pill carencia">Em espera</span></dt><dd>Já foi entregue. Espera <b class="v-hold"></b> dias (a carência) para ver se o cliente cancela ou devolve. Se voltar, não gera crédito.</dd>
+            <dt><span class="pill liberada">Crédito liberado</span></dt><dd>Passou a espera. O valor entra na soma do pagamento do dia <b class="v-day"></b>.</dd>
+            <dt><span class="pill paga">Crédito pago</span></dt><dd>Já foi pago ao influenciador.</dd>
+            <dt><span class="pill cancelado">Cancelado</span></dt><dd>Pedido cancelado ou devolvido. Não gera crédito.</dd>
+          </dl>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">
+        <div class="chips" id="filters" role="group" aria-label="Filtrar por situação"></div>
+        <select class="sel sm" id="f-aff" aria-label="Filtrar por cupom"></select>
+      </div>
+      <div class="tablebox"><table>
+        <thead><tr><th>Pedido</th><th>Cupom</th><th>Cliente</th><th class="r">Cliente pagou</th><th class="r">Crédito do influenciador</th><th>Situação</th><th></th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- PAGAMENTO -->
+  <section data-view="pagamento" hidden>
+    <div class="head"><h1>Pagamento do dia <span class="v-day"></span></h1><p>Todo mês a Voto soma o crédito liberado de cada influenciador. Quem chegou à meta de <b class="v-goal"></b> recebe por Pix. Quem não chegou não perde nada: o valor acumula para o mês seguinte.</p></div>
+    <div class="stats" id="pay-stats"></div>
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Influenciadores</h2>
+        <button class="btn" id="pay-all" data-action="payall">Fechar pagamento do dia <span class="v-day"></span></button>
+      </div>
+      <div class="tablebox"><table>
+        <thead><tr><th>Influenciador</th><th>Chave Pix</th><th class="r">Crédito liberado</th><th class="r">Em espera</th><th>Situação</th><th class="r">Falta para a meta</th><th></th></tr></thead>
+        <tbody id="pay-body"></tbody>
+      </table></div>
+      <p class="rules-note">Aqui o botão paga na hora, para você ver como funciona. Na loja de verdade o fechamento acontece uma vez por mês, no dia <span class="v-day"></span>. Só entra na conta o crédito de pedidos que já passaram da espera e não foram cancelados.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Histórico de pagamentos</h2></div>
+      <div class="tablebox"><table class="narrow">
+        <thead><tr><th>Data</th><th>Influenciador</th><th class="r">Pedidos</th><th class="r">Valor pago</th></tr></thead>
+        <tbody id="hist-body"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- SIMULADOR -->
+  <section data-view="simulador" hidden>
+    <div class="head"><h1>Simulador do pedido</h1><p>O cliente aplica o cupom no carrinho e o total já atualiza com o desconto. O WhatsApp recebe o pedido com o valor final, e a IA não valida cupom.</p></div>
+    <div class="sim" style="margin-top:22px">
+      <div class="panel cart" style="margin-top:0">
+        <h2>Carrinho do cliente</h2>
+        <div class="field"><label for="s-name">Nome do cliente</label><input class="inp" id="s-name" value="Paula" maxlength="30"></div>
+        <div class="field"><label for="s-kit">Produto</label>
+          <select class="sel" id="s-kit">
+            <option value="basico">Kit básico · R$ 189,00</option>
+            <option value="medio" selected>Kit médio · R$ 289,00</option>
+            <option value="premium">Kit premium · R$ 459,00</option>
+            <option value="escola">Compra para escola (30 kits) · R$ 1.000,00</option>
+          </select></div>
+        <div class="field"><label for="s-city">Cidade da entrega</label>
+          <select class="sel" id="s-city"><option>Jundiaí</option><option>Várzea Paulista</option><option>Jarinu</option><option>Itatiba</option><option>Campinas</option></select></div>
+        <div class="field">
+          <label for="s-coupon">Cupom de desconto</label>
+          <div class="coupon-row"><input class="inp" id="s-coupon" value="LARISSA5" maxlength="14" autocapitalize="characters" autocomplete="off"><button class="btn" id="s-apply" type="button">Aplicar</button></div>
+          <small id="s-msg"></small>
+        </div>
+        <div class="totals" id="s-totals"></div>
+        <button class="btn big" id="s-go">Finalizar pelo WhatsApp</button>
+      </div>
+      <div class="phone" aria-live="polite">
+        <div class="phone-h"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="#ff6b00"/></svg></i><div>WhatsApp da Voto<small>IA de atendimento</small></div></div>
+        <div class="chat" id="chat"><p class="chat-empty">A conversa aparece aqui quando você finalizar o pedido.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFLUENCIADOR -->
+  <section data-view="afiliado" hidden>
+    <div class="me-pick"><label for="me-sel">Ver como:</label><select class="sel sm" id="me-sel"></select></div>
+    <div class="head"><h1 id="me-h"></h1><p id="me-p"></p></div>
+
+    <div class="ticket">
+      <div class="ticket-main">
+        <div class="lbl">Seu cupom</div>
+        <div class="ticket-code" id="me-code"></div>
+        <p class="hint">Quem comprar na Voto com esse cupom ganha <span id="me-disc"></span> de desconto e você ganha <span id="me-credit"></span> de crédito sobre a compra.</p>
+        <div class="ticket-acts">
+          <button class="btn" data-action="copy" data-target="me-code">Copiar cupom</button>
+          <a class="btn ghost2" id="me-share" target="_blank" rel="noopener" href="#">Compartilhar no WhatsApp</a>
+        </div>
+      </div>
+      <div class="ticket-side">
+        <div><b id="me-disc2"></b><span>de desconto para o cliente</span></div>
+        <div><b id="me-credit2"></b><span>de crédito para você</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="balance">
+        <div><div class="lbl">Crédito liberado</div><div class="big" id="avail"></div></div>
+        <div class="next"><div class="lbl">Próximo pagamento</div><div class="nxt" id="nxt"></div></div>
+      </div>
+      <div class="goal" id="goal"></div>
+      <div id="pay-flag"></div>
+      <div class="mini" id="mini"></div>
+    </div>
+
+    <div class="stats" id="me-stats"></div>
+
+    <div class="panel">
+      <div class="panel-h"><h2>Pedidos com o seu cupom</h2><p>O crédito aparece quando o cliente paga</p></div>
+      <ul class="feed" id="me-orders"></ul>
+    </div>
+
+    <div class="cols">
+      <div class="panel">
+        <div class="panel-h"><h2>Quanto você ganha</h2></div>
+        <div class="field"><label for="calc">Preço da compra: <b class="num" id="calc-v"></b></label><input type="range" id="calc" min="50" max="3000" step="50" value="1000"></div>
+        <p class="calc-out">O cliente paga <b class="plain" id="calc-p"></b>.<br>Você recebe <b id="calc-o"></b> de crédito.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Assim o cliente usa</h2></div>
+        <div class="mock">
+          <div class="it"><span>Kit médio</span><span class="num">R$ 289,00</span></div>
+          <div class="cp"><div>Cupom <code id="mock-code"></code></div><span id="mock-who"></span></div>
+          <div class="it"><span>Desconto</span><span class="num" id="mock-d"></span></div>
+          <div class="it"><b>Total</b><b class="num" id="mock-t"></b></div>
+        </div>
+        <p style="margin-top:12px;font-size:13.5px;color:var(--muted)">O desconto já vem aplicado no carrinho. O pedido vai para o WhatsApp com o valor final e o seu cupom.</p>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="panel"><div class="panel-h"><h2>Mensagem pronta</h2></div><div class="msg" id="me-msg"></div><p style="margin-top:12px"><button class="btn ghost" data-action="copy" data-target="me-msg">Copiar mensagem</button></p></div>
+      <div class="panel"><div class="panel-h"><h2>Como você recebe</h2></div>
+        <ol class="steps">
+          <li>Alguém compra com o seu cupom, paga, e a Voto entrega.</li>
+          <li>O crédito fica <b class="v-hold"></b> dias em espera, para ver se o pedido volta. Pedido cancelado ou devolvido não conta.</li>
+          <li>Todo dia <b class="v-day"></b> a Voto soma o seu crédito liberado.</li>
+          <li>Se chegou a <b class="v-goal"></b>, você recebe por Pix. Se não, o valor acumula e vale no mês seguinte.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/cupons/app.js"></script>
+
+
+</body></html>

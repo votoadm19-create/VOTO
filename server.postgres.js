@@ -357,20 +357,17 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/', function (req, res) {
-  res.sendFile(path.join(ROOT, 'index.html'));
+  res.sendFile(path.join(ROOT, 'public', 'store', 'index.html'));
 });
 app.get('/index.html', function (req, res) {
-  res.sendFile(path.join(ROOT, 'index.html'));
-});
-app.get('/style.css', function (req, res) {
-  res.sendFile(path.join(ROOT, 'style.css'));
-});
-app.get('/script.js', function (req, res) {
-  res.sendFile(path.join(ROOT, 'script.js'));
+  res.sendFile(path.join(ROOT, 'public', 'store', 'index.html'));
 });
 app.use('/imgs', express.static(path.join(ROOT, 'imgs')));
 app.use('/uploads', express.static(UPLOAD_DIR));
-app.use('/admin', express.static(path.join(ROOT, 'admin')));
+app.use('/admin', express.static(path.join(ROOT, 'public', 'admin')));
+app.use('/', express.static(path.join(ROOT, 'public', 'store')));
+app.use('/cupons', express.static(path.join(ROOT, 'public', 'cupons')));
+app.use('/influenciador', express.static(path.join(ROOT, 'public', 'influenciador')));
 
 /* ---------- loja: produtos ---------- */
 

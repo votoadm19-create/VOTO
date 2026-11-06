@@ -244,6 +244,21 @@ textarea:focus {
   box-shadow: inset 3px 0 0 var(--brand);
 }
 
+.side nav .nav-link {
+  color: #b8c1d4;
+  text-decoration: none;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+
+.side nav .nav-link:hover {
+  background: #232b3c;
+  color: #fff;
+}
+
 .side-foot {
   margin-top: auto;
   display: flex;
