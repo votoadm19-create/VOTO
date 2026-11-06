@@ -31,6 +31,9 @@
               '<a class="pillbar" href="#montar"><b>Voto Kit</b><span>Monte o kit do jeito que você quer</span>' +
               '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>';
             h +=
+              '<a class="pillbar" href="/influenciador"><b>Seja Influenciador</b><span>Indique a Voto e ganhe por cada compra com o seu cupom</span>' +
+              '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>';
+            h +=
               '<div class="shorts">' +
               short(
                 'box',
