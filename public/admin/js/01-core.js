@@ -31,13 +31,16 @@
     clientes: [],
     pedidos: [],
     avaliacoes: [],
+    influenciadores: [],
     config: null,
     stats: null,
     buscaProduto: '',
     buscaCliente: '',
     buscaPedido: '',
     buscaAvaliacao: '',
+    buscaInfluenciador: '',
     filtroPedido: 'todos',
+    filtroInfluenciador: 'todos',
     editing: null,
   };
 
@@ -169,6 +172,7 @@
     clientes: ['Clientes', 'Quem se cadastrou na Voto'],
     pedidos: ['Pedidos', 'Acompanhe os pedidos feitos pelo site'],
     avaliacoes: ['Avaliações', 'Modere as avaliações enviadas pelos clientes'],
+    influenciadores: ['Influenciadores', 'Aprove cadastros, veja detalhes e desempenho'],
     config: ['Configurações', 'WhatsApp, entrega e senha do painel'],
   };
 
@@ -210,6 +214,9 @@
       } else if (view === 'avaliacoes') {
         state.avaliacoes = await api('/api/admin/reviews');
         renderAvaliacoes();
+      } else if (view === 'influenciadores') {
+        state.influenciadores = await api('/api/admin/influenciadores');
+        renderInfluenciadores();
       } else if (view === 'config') {
         state.config = await api('/api/admin/settings');
         renderConfig();

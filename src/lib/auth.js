@@ -118,10 +118,10 @@ function requireInfluenciador(req, res, next) {
   }
   const inf = db
     .prepare(
-      'SELECT id, nome, email, telefone, cpf, cidade, rede, usuario_rede, seguidores, pix_tipo, pix_chave, coupon_code, ativo FROM influencers WHERE id = ?'
+      'SELECT id, nome, email, telefone, cpf, cidade, rede, usuario_rede, seguidores, pix_tipo, pix_chave, coupon_code, ativo, status FROM influencers WHERE id = ?'
     )
     .get(session.user_id);
-  if (!inf || inf.ativo !== 1) {
+  if (!inf || inf.ativo !== 1 || (inf.status || 'ativo') !== 'ativo') {
     return res.status(401).json({ erro: 'Conta de influenciador não encontrada.' });
   }
   req.influenciador = inf;

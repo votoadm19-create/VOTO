@@ -26,61 +26,67 @@
 
       /* Layout: app de marketplace em coluna única (cabeçalho laranja fixo, abas, banner, atalhos redondos, grade de cards, menu inferior) */
       :root {
-        --bg: #f3f0ec;
+        --bg: #faf7f3;
         --card: #ffffff;
         --ink: #1f1a15;
-        --muted: #6a625a;
-        --line: #e6e0d9;
-        --brand: #ff6b00;
-        --brand-ink: #2a1500;
-        --pill: #b83a00;
+        --muted: #746a61;
+        --line: #eadfd3;
+        --brand: #d96a3b;
+        --brand2: #ebb489;
+        --brand-ink: #33170c;
+        --pill: #9e4b1c;
         --link: #1f5fc4;
         --good: #0b8a4b;
-        --chip: #ffe3c2;
-        --chip-ink: #7a3300;
-        --tile: #f7f3ee;
-        --banner: #ffc999;
+        --chip: #f5e3d3;
+        --chip-ink: #7e4520;
+        --tile: #f7f1ea;
+        --banner: #f3d8bf;
         --field: #ffffff;
+        --shadow: 0 1px 2px rgba(31, 26, 21, 0.06), 0 8px 24px rgba(31, 26, 21, 0.04);
         --font:
           'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         --nav-h: 60px;
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme='light']) {
-          --bg: #141210;
+          --bg: #1a1714;
           --card: #201c18;
           --ink: #f4efe9;
           --muted: #a79e94;
-          --line: #352f29;
-          --brand: #f26200;
-          --brand-ink: #1d0e00;
-          --pill: #d9480f;
+          --line: #332b25;
+          --brand: #cc7a4d;
+          --brand2: #8a5232;
+          --brand-ink: #241008;
+          --pill: #a14d1e;
           --link: #86b4ff;
           --good: #4ed08a;
-          --chip: #4a2a0c;
-          --chip-ink: #ffd2a1;
-          --tile: #2a2520;
-          --banner: #4a2a0c;
+          --chip: #3f2a1c;
+          --chip-ink: #efc9a6;
+          --tile: #26201b;
+          --banner: #3f2a1c;
           --field: #2a2520;
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
           color-scheme: dark;
         }
       }
       :root[data-theme='dark'] {
-        --bg: #141210;
+        --bg: #1a1714;
         --card: #201c18;
         --ink: #f4efe9;
         --muted: #a79e94;
-        --line: #352f29;
-        --brand: #f26200;
-        --brand-ink: #1d0e00;
-        --pill: #d9480f;
+        --line: #332b25;
+        --brand: #cc7a4d;
+        --brand2: #8a5232;
+        --brand-ink: #241008;
+        --pill: #a14d1e;
         --link: #86b4ff;
         --good: #4ed08a;
-        --chip: #4a2a0c;
-        --chip-ink: #ffd2a1;
-        --tile: #2a2520;
-        --banner: #4a2a0c;
+        --chip: #3f2a1c;
+        --chip-ink: #efc9a6;
+        --tile: #26201b;
+        --banner: #3f2a1c;
         --field: #2a2520;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
         color-scheme: dark;
       }
 
@@ -99,28 +105,6 @@
         line-height: 1.35;
         -webkit-text-size-adjust: 100%;
       }
-      body::after {
-  content: '';
-  position: absolute;
-  /* ESSA LINHA É A MÁGICA: começa no final do cabeçalho (aprox 175px no celular) */
-  top: 173px; 
-  left: 0;
-  right: 0;
-  height: 300px; 
-  z-index: -1;
-  pointer-events: none;
-  
-  /* Começa 100% sólido no topo e vai sumindo */
-  background: linear-gradient(to bottom, rgba(252, 101, 3, 1) 0%, rgba(252, 101, 3, 0) 100%);
-}
-
-/* Ajuste para PC (onde o cabeçalho é um pouco mais alto) */
-@media (min-width: 900px) {
-  body::after {
-    top: 215px; 
-    height: 400px;
-  }
-}
       body::before {
         content: '';
         position: fixed;
@@ -164,9 +148,9 @@
         position: sticky;
         top: env(safe-area-inset-top, 0px);
         z-index: 20;
-        background: var(--brand);
+        background: linear-gradient(120deg, var(--brand) 55%, var(--brand2) 100%);
         color: var(--brand-ink);
-        padding-block: 10px 0;
+        padding-block: 12px 2px;
       }
       .row1 {
         display: flex;
@@ -213,6 +197,10 @@
       .search input::placeholder {
         color: var(--muted);
       }
+      .search:focus-within {
+        outline: 2px solid var(--link);
+        outline-offset: 1px;
+      }
       .cartbtn,
       .accountbtn,
       .themebtn {
@@ -249,6 +237,7 @@
         display: grid;
         place-items: center;
         padding: 0 5px;
+        box-shadow: 0 0 0 2px var(--bg);
       }
       .badge:empty {
         display: none;
@@ -283,7 +272,8 @@
       .tab {
         flex: none;
         font-size: 16px;
-        padding-bottom: 8px;
+        font-weight: 600;
+        padding-bottom: 10px;
         border-bottom: 3px solid transparent;
         color: var(--brand-ink);
         opacity: 0.8;
@@ -303,15 +293,21 @@
       .stack {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        padding-block: 12px 0;
+        gap: 18px;
+        padding-block: 16px 0;
+      }
+      h2.sec {
+        margin: 2px 0 0;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
       }
 
       /* banner */
       .banner {
         position: relative;
         overflow: hidden;
-        border-radius: 16px;
+        border-radius: 20px;
         background: var(--banner);
         min-height: 168px;
         display: flex;
@@ -370,10 +366,10 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background: var(--pill);
+        background: linear-gradient(120deg, var(--pill) 55%, var(--brand2) 100%);
         color: #fff;
         border-radius: 999px;
-        padding: 12px 16px;
+        padding: 14px 18px;
         font-weight: 600;
       }
       .pillbar b {
@@ -388,10 +384,10 @@
       /* atalhos */
       .shorts {
         display: flex;
-        gap: 16px;
+        gap: 18px;
         overflow-x: auto;
         scrollbar-width: none;
-        padding-block: 4px;
+        padding-block: 6px;
       }
       .shorts::-webkit-scrollbar {
         display: none;
@@ -414,22 +410,44 @@
         place-items: center;
         background: var(--chip);
         color: var(--chip-ink);
+        transition: transform 0.15s, box-shadow 0.15s;
+      }
+      .short:active i {
+        transform: scale(0.92);
+      }
+      @media (hover: hover) and (min-width: 900px) {
+        .short:hover i {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow);
+        }
+        .card:hover {
+          transform: translateY(-2px);
+        }
+      }
+      .card {
+        transition: transform 0.2s;
+      }
+      .footcol:not(.brand) b {
+        font-size: 12.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
 
       /* grade */
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        gap: 12px;
         grid-auto-flow: dense;
       }
       .card {
         position: relative;
         background: var(--card);
-        border-radius: 14px;
+        border-radius: 16px;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        box-shadow: var(--shadow);
       }
       .tile {
         display: block;
@@ -480,7 +498,7 @@
       }
       .price {
         font-size: 26px;
-        font-weight: 500;
+        font-weight: 700;
         letter-spacing: -0.02em;
         display: flex;
         align-items: baseline;
@@ -489,7 +507,7 @@
       }
       .price sup {
         font-size: 0.5em;
-        font-weight: 500;
+        font-weight: 700;
         margin-left: 1px;
         vertical-align: top;
         position: relative;
@@ -582,17 +600,20 @@
       }
       .empty {
         background: var(--card);
-        border-radius: 14px;
-        padding: 28px 18px;
+        border-radius: 20px;
+        padding: 36px 20px;
         text-align: center;
         display: flex;
         flex-direction: column;
         gap: 10px;
         align-items: center;
+        box-shadow: var(--shadow);
       }
       .empty h2 {
         margin: 0;
-        font-size: 18px;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
       }
       .empty p {
         margin: 0;
@@ -641,11 +662,12 @@
       /* lista (carrinho, montar kit) */
       .panel {
         background: var(--card);
-        border-radius: 14px;
-        padding: 14px;
+        border-radius: 16px;
+        padding: 18px;
         display: flex;
         flex-direction: column;
         gap: 12px;
+        box-shadow: var(--shadow);
       }
       .line {
         display: flex;
@@ -1173,7 +1195,7 @@
           font-size: 17px;
         }
         .stack {
-          gap: 20px;
+          gap: 24px;
           padding-block: 20px 0;
         }
         .banner {

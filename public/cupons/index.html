@@ -77,6 +77,9 @@
         <div class="field" data-inf><label for="n-pix">Chave Pix</label><input class="inp" id="n-pix" maxlength="40" placeholder="Telefone, e-mail ou CPF"></div>
         <div class="field" data-inf><label for="n-email">E-mail de acesso</label><input class="inp" id="n-email" type="email" maxlength="60" autocomplete="off" placeholder="influenciador@email.com"><small>Ele entra no portal com esse e-mail</small></div>
         <div class="field" data-inf><label for="n-pass">Senha provisória</label><div class="coupon-row"><input class="inp" id="n-pass" maxlength="40" autocomplete="off" placeholder="Mínimo 8 caracteres" style="text-transform:none"><button class="btn" type="button" data-action="genpass">Gerar</button></div><small>Você vê a senha só uma vez, depois de criar</small></div>
+        <div class="field"><label for="n-min">Compra mínima (R$, opcional)</label><input class="inp" id="n-min" type="number" min="0" step="0.01" placeholder="Ex.: 100"></div>
+        <div class="field"><label for="n-val">Válido até (opcional)</label><input class="inp" id="n-val" type="date"></div>
+        <div class="field"><label for="n-lim">Limite de usos (opcional)</label><input class="inp" id="n-lim" type="number" min="0" step="1" placeholder="Ilimitado"></div>
         <div class="field"><label>&nbsp;</label><button class="btn big" type="submit">Criar cupom</button></div>
       </form>
     </div>
@@ -262,7 +265,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="/cupons/app.js"></script>
+<script src="/cupons/app.js?v=20261111"></script>
 
 
 </body></html>

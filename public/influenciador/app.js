@@ -42,7 +42,12 @@
   var me = null, view = "entrar", tab = "inicio";
 
   function apiJSON(url, opts) {
-    return fetch(url, Object.assign({ headers: {} }, opts || {}))
+    var o = Object.assign({ headers: {} }, opts || {});
+    if (o.body && typeof o.body !== 'string') {
+      o.body = JSON.stringify(o.body);
+      o.headers['Content-Type'] = 'application/json';
+    }
+    return fetch(url, o)
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (data) {
           if (!r.ok) throw new Error(data.erro || "Não foi possível concluir a ação.");
@@ -158,10 +163,74 @@
     var pitch = '<aside class="pitch"><div class="eyebrow">Programa de influenciadores</div>' +
       "<h1>Indique a Voto e receba por cada compra feita com o seu cupom</h1>" +
       '<p class="lead">Quem compra com o seu cupom ganha desconto no carrinho. Você ganha crédito sobre a compra e recebe por Pix.</p>' + facts +
-      "<ol><li>A Voto cria o seu acesso e o seu cupom.</li><li>Você entra aqui com o e-mail e a senha que a Voto te enviou.</li><li>Divulgue o cupom para quem compra material escolar.</li><li>Receba por Pix todo dia " + RULES.payDay + ", quando chegar a " + brl(RULES.goal) + ".</li></ol>" +
+      "<ol><li>Cadastre-se como influenciador e aguarde a aprovação da Voto.</li><li>Depois de aprovado, seu cupom é gerado automaticamente.</li><li>Divulgue o cupom para quem compra material escolar.</li><li>Receba por Pix todo dia " + RULES.payDay + ", quando chegar a " + brl(RULES.goal) + ".</li></ol>" +
       '<div class="mini-ticket"><code>SEUCUPOM' + Math.round(RULES.disc * 100) + '</code><span>Exemplo de cupom</span></div></aside>';
     return '<div class="auth">' + pitch + '<div class="form-side"><div class="card"><h2 style="font-size:22px;letter-spacing:-0.01em">Entrar na sua conta</h2>' + loginForm() +
-      '<p class="hint-line">Ainda não tem acesso? Fale com a equipe da Voto. Os acessos são criados por ela.</p>' + rulesBox() + "</div></div></div>";
+      (regMsg ? '<div class="fmsg" role="status">' + esc(regMsg) + "</div>" : "") +
+      '<button class="btn ghost block" type="button" data-act="cadastro">Cadastre-se como influenciador</button>' +
+      '<p class="hint-line">Novo por aqui? A equipe Voto aprova o cadastro antes de liberar o acesso.</p>' + rulesBox() + "</div></div></div>";
+  }
+  var regMsg = "";
+  var regSuccess = null;
+  function registerView() {
+    function sec(titulo, items) {
+      return '<div class="reg-sec"><h3>' + titulo + '</h3><div class="grid2">' + items + "</div></div>";
+    }
+    var form = '<form id="register-form" novalidate>' +
+      sec("Seus dados",
+        field("c-nome", "Nome completo", inp("c-nome", 'type="text" autocomplete="name" required minlength="3" placeholder="Seu nome"'), "") +
+        field("c-email", "E-mail", inp("c-email", 'type="email" autocomplete="email" inputmode="email" required placeholder="voce@email.com"'), "Você vai entrar no portal com este e-mail.") +
+        field("c-senha", "Senha (mínimo 8 caracteres)", '<div class="pw"><input class="inp" id="c-senha" type="password" autocomplete="new-password" minlength="8" required placeholder="Escolha uma senha"><button class="btn ghost sm" type="button" data-act="showpw" data-t="c-senha">Mostrar</button></div>', "") +
+        field("c-tel", "WhatsApp", inp("c-tel", 'type="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(11) 99999-9999"'), "") +
+        field("c-cpf", "CPF", inp("c-cpf", 'type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"'), "Ajuda a validar a sua identidade.") +
+        field("c-cidade", "Cidade", inp("c-cidade", 'type="text" maxlength="40" placeholder="Jundiaí"'), "")) +
+      sec("Onde você divulga",
+        field("c-rede", "Rede social", '<select class="sel" id="c-rede">' + opts(REDES) + "</select>") +
+        field("c-usuario", "Usuário ou link do perfil", inp("c-usuario", 'type="text" maxlength="80" placeholder="@voce"'), "É onde a Voto confere a divulgação.") +
+        field("c-seg", "Seguidores", '<select class="sel" id="c-seg">' + opts(SEGS) + "</select>")) +
+      '<div class="fmsg bad" id="c-msg" role="alert" hidden></div>' +
+      '<button class="btn block" type="submit" id="c-submit">Enviar meu cadastro</button>' +
+      '<button class="btn ghost block" type="button" data-act="to-login">Já tenho conta · Entrar</button></form>';
+    return '<div class="auth-centered">' + '<div class="form-side"><div class="card"><h2 style="font-size:22px;letter-spacing:-0.01em">Cadastro de influenciador</h2>' +
+      '<p class="hint-line">Preencha seus dados. Depois de aprovado pela equipe Voto, você recebe o acesso ao portal e o seu cupom é gerado automaticamente.</p>' + form + "</div></div></div>";
+  }
+  function successView() {
+    return '<div class="auth-centered"><div class="card" style="text-align:center">' +
+      '<div class="check" aria-hidden="true">✓</div>' +
+      "<h2 style='font-size:22px;letter-spacing:-0.01em'>Cadastro enviado!</h2>" +
+      '<p class="hint-line">Olá, <b>' + esc(regSuccess ? regSuccess.nome.split(" ")[0] : "influenciador") + '</b>! Seu cadastro está <b>em análise</b> pela equipe Voto.' +
+      (regSuccess ? " Você vai entrar com <b>" + esc(regSuccess.email) + "</b> e a senha que cadastrou." : "") +
+      "</p>" +
+      '<ol class="steps" style="text-align:left"><li>A equipe aprova seu cadastro (normalmente em até 1 dia útil).</li><li>Seu cupom é gerado automaticamente.</li><li>Você recebe por Pix todo dia ' + RULES.payDay + ' ao bater ' + brl(RULES.goal) + ".</li></ol>" +
+      '<button class="btn block" type="button" data-act="to-login">Voltar ao login</button></div></div>';
+  }
+  function doRegister() {
+    var msg = $("c-msg");
+    msg.hidden = true;
+    var nome = val("c-nome"), email = val("c-email").toLowerCase(), senha = $("c-senha").value,
+        tel = val("c-tel"), cpf = val("c-cpf").replace(/\D/g, ""), cidade = val("c-cidade"),
+        rede = val("c-rede"), usuario = val("c-usuario"), seg = val("c-seg");
+    if (nome.length < 3) { msg.textContent = "Informe seu nome completo."; msg.hidden = false; return; }
+    if (!emailOk(email)) { msg.textContent = "Digite um e-mail válido."; msg.hidden = false; return; }
+    if (!senha || senha.length < 8) { msg.textContent = "A senha precisa ter pelo menos 8 caracteres."; msg.hidden = false; return; }
+    if (cpf && !cpfOk(cpf)) { msg.textContent = "Digite um CPF válido com 11 dígitos."; msg.hidden = false; return; }
+    if (tel && !telOk(tel)) { msg.textContent = "Digite o WhatsApp com DDD, só números (10 ou 11 dígitos)."; msg.hidden = false; return; }
+    var btn = $("c-submit");
+    if (btn) { btn.disabled = true; btn.textContent = "Enviando…"; }
+    apiJSON("/api/influenciador/register", {
+      method: "POST",
+      body: { nome: nome, email: email, senha: senha, telefone: tel, cpf: cpf, cidade: cidade, rede: rede, usuario: usuario, seg: seg },
+    })
+      .then(function () {
+        regSuccess = { nome: nome, email: email };
+        regMsg = "";
+        view = "sucesso"; render(); toast("Cadastro enviado para análise.");
+      })
+      .catch(function (err) {
+        if (btn) { btn.disabled = false; btn.textContent = "Enviar meu cadastro"; }
+        msg.textContent = err.message || "Não foi possível cadastrar. Tente de novo.";
+        msg.hidden = false;
+      });
   }
   function loginForm() {
     return '<form id="login-form" novalidate class="grid2" style="grid-template-columns:1fr">' +
@@ -177,7 +246,7 @@
       "<li>Depois da entrega, o crédito fica " + RULES.hold + " dias em espera. Se o pedido for cancelado ou devolvido, não conta.</li>" +
       "<li>Todo dia " + RULES.payDay + " a Voto soma o seu crédito liberado. Chegou a " + brl(RULES.goal) + ", você recebe por Pix.</li>" +
       "<li>Abaixo de " + brl(RULES.goal) + ", o valor acumula para o mês seguinte. Nada se perde.</li>" +
-      "<li>O acesso e o cupom são criados pela equipe da Voto.</li></ul></details>";
+      "<li>Depois de aprovado, seu cupom é gerado automaticamente.</li></ul></details>";
   }
 
   function doLogin() {
@@ -223,6 +292,7 @@
       '<p class="hint">Quem comprar na Voto com esse cupom ganha ' + pct(u.disc) + " de desconto e você ganha " + pct(u.credit) + " de crédito sobre a compra.</p>" +
       '<div class="ticket-acts"><button class="btn" data-act="copy" data-t="my-code">Copiar cupom</button><a class="btn alt" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(msg) + '">Compartilhar no WhatsApp</a></div></div>' +
       '<div class="ticket-side"><div><b>' + pct(u.disc) + "</b><span>de desconto para o cliente</span></div><div><b>" + pct(u.credit) + "</b><span>de crédito para você</span></div></div></div>" +
+      (!u.pixChave ? '<p class="flag warn">Complete sua <b>chave Pix</b> em Meus dados para receber seus pagamentos. <button class="link" type="button" data-act="tab" data-t="dados">Preencher agora</button></p>' : "") +
       '<div class="panel"><div class="balance"><div><div class="lbl">Crédito liberado</div><div class="big">' + brl(a.lib) + '</div></div><div class="next-pay"><div class="lbl">Próximo pagamento</div><div class="nxt">' + fmt(nxt) + "</div></div></div>" +
       '<div class="goal"><div class="row"><span>Meta para receber</span><b>' + brl(a.lib) + " de " + brl(RULES.goal) + '</b></div><div class="bar"><i style="width:' + p + '%"></i></div></div>' + flag +
       '<div class="mini"><div><div class="lbl">Em espera ou entrega</div><div class="v">' + brl(a.esp) + '</div></div><div><div class="lbl">Já recebido</div><div class="v">' + brl(a.got) + '</div></div><div><div class="lbl">Total de crédito</div><div class="v">' + brl(a.total) + "</div></div></div></div>" +
@@ -276,7 +346,8 @@
     chk("tel", telOk(g.tel), "Digite o DDD e o número.");
     chk("cidade", g.cidade.length >= 2, "Informe a sua cidade.");
     chk("usuario", g.usuario.length >= 3, "Informe o seu usuário ou o link do perfil.");
-    chk("pix", pixOk(g.pixtipo, g.pix), "Chave Pix inválida para o tipo escolhido.");
+    if (g.pix) chk("pix", pixOk(g.pixtipo, g.pix), "Chave Pix inválida para o tipo escolhido.");
+    else setErr("d-pix", "");
     var msg = $("d-msg");
     if (!ok) { msg.textContent = "Confira os campos em vermelho."; msg.hidden = false; return; }
     msg.hidden = true;
@@ -302,7 +373,7 @@
       who.hidden = false;
       who.innerHTML = '<span class="nm">' + esc(me.nome.split(" ")[0]) + '</span><button class="btn ghost sm" data-act="logout">Sair</button>';
     } else { who.hidden = true; who.innerHTML = ""; }
-    $("app").innerHTML = view === "painel" ? panelView() : authView();
+    $("app").innerHTML = view === "painel" ? panelView() : view === "cadastro" ? registerView() : view === "sucesso" ? successView() : authView();
     if (view === "painel" && tab === "inicio") calc();
     try { window.scrollTo(0, 0); } catch (e) {}
   }
@@ -328,31 +399,35 @@
     else if (a === "copy") copyText(t.dataset.t);
     else if (a === "logout") { apiJSON("/api/influenciador/logout", { method: "POST" }).catch(function () {}).then(function () { me = null; view = "entrar"; render(); toast("Você saiu da conta"); }); }
     else if (a === "showpw") { var i = $(t.dataset.t); var show = i.type === "password"; i.type = show ? "text" : "password"; t.textContent = show ? "Ocultar" : "Mostrar"; }
+    else if (a === "cadastro") { regMsg = ""; view = "cadastro"; render(); }
+    else if (a === "to-login") { view = "entrar"; render(); }
   });
   document.addEventListener("submit", function (e) {
     e.preventDefault();
     var id = e.target.id;
     if (id === "login-form") doLogin();
+    else if (id === "register-form") doRegister();
     else if (id === "data-form") saveData();
   });
   document.addEventListener("input", function (e) {
     var t = e.target, id = t.id;
     if (id === "calc") { calc(); return; }
-    if (id === "d-tel") t.value = maskTel(t.value);
-    else if (id === "d-pix") {
-      var tipo = $("d-pixtipo").value;
+    if (id === "d-tel" || id === "c-tel") t.value = maskTel(t.value);
+    else if (id === "d-pix" || id === "c-pix") {
+      var tipo = $(id === "c-pix" ? "c-pixtipo" : "d-pixtipo").value;
       if (tipo === "cpf") t.value = maskCpf(t.value); else if (tipo === "telefone") t.value = maskTel(t.value);
     }
+    else if (id === "c-cpf") t.value = maskCpf(t.value);
     if (id.indexOf("-") === 1 && $("e-" + id) && $("e-" + id).textContent) setErr(id, "");
   });
   document.addEventListener("change", function (e) {
     var id = e.target.id;
-    if (id === "d-pixtipo") {
-      var pix = $("d-pix"), tipo = e.target.value;
-      pix.placeholder = { cpf: "000.000.000-00", email: "voce@email.com", telefone: "(11) 99999-0000", aleatoria: "32 caracteres" }[tipo];
+    if (id === "d-pixtipo" || id === "c-pixtipo") {
+      var pix = $(id === "c-pixtipo" ? "c-pix" : "d-pix"), tipo = e.target.value;
+      pix.placeholder = { cpf: "000.000.000-00", email: "voce@email.com", telefone: "(11) 99999-0000", aleatoria: "32 caracteres ou letras" }[tipo];
       pix.inputMode = tipo === "email" || tipo === "aleatoria" ? "text" : "numeric";
       pix.value = "";
-      setErr("d-pix", "");
+      setErr(id === "c-pixtipo" ? "c-pix" : "d-pix", "");
     }
   });
 

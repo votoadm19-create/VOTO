@@ -11,17 +11,22 @@ const { productOut } = require('../lib/domain');
 const { getSettings } = require('../lib/domain');
 const { setSetting } = require('../lib/domain');
 const { readProductBody } = require('../lib/domain');
+const { loginLimiter } = require('../lib/rateLimit');
 const { ORDER_STATUS } = require('../lib/domain');
+const { couponRules } = require('../lib/domain');
+const { findCoupon } = require('../lib/domain');
+const { couponOut } = require('../lib/domain');
 const { trimOrNull } = require('../lib/util');
 const { slugify } = require('../lib/util');
 const { validNumber } = require('../lib/util');
 const { safeJson } = require('../lib/util');
+const { adjustOrderStock } = require('../lib/domain');
 const { saveDataUrl } = require('../lib/util');
 
 function register(app) {
 /* ---------- admin: autenticação ---------- */
 
-app.post('/api/admin/login', function (req, res) {
+app.post('/api/admin/login', loginLimiter, function (req, res) {
   const usuario = trimOrNull(req.body && req.body.usuario);
   const senha = req.body && req.body.senha;
   if (!usuario || !senha) {
@@ -178,6 +183,16 @@ app.delete('/api/admin/customers/:id', requireAdmin, function (req, res) {
   res.json({ ok: true });
 });
 
+app.post('/api/admin/customers/:id/reset-senha', requireAdmin, function (req, res) {
+  const senha = req.body && req.body.senha;
+  if (!senha || String(senha).length < 6) {
+    return res.status(400).json({ erro: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  }
+  const info = db.prepare('UPDATE customers SET senha = ? WHERE id = ?').run(hashPassword(String(senha)), req.params.id);
+  if (!info.changes) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+  res.json({ ok: true });
+});
+
 /* ---------- admin: pedidos ---------- */
 
 app.get('/api/admin/orders', requireAdmin, function (req, res) {
@@ -191,12 +206,80 @@ app.get('/api/admin/orders', requireAdmin, function (req, res) {
 
 app.patch('/api/admin/orders/:id', requireAdmin, function (req, res) {
   const status = trimOrNull(req.body && req.body.status);
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ erro: 'Pedido não encontrado.' });
   if (ORDER_STATUS.indexOf(status) < 0) {
     return res.status(400).json({ erro: 'Status inválido.' });
   }
-  const info = db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
-  if (!info.changes) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+  if (status === 'cancelado' && order.status !== 'cancelado') {
+    safeJson(order.itens, []).forEach(function (it) {
+      const pid = it.pid || null;
+      const qtd = Number(it.qtd) || 0;
+      if (pid && qtd > 0) {
+        db.prepare('UPDATE products SET estoque = estoque + ? WHERE id = ?').run(qtd, pid);
+        if (order.hub_id) {
+          db.prepare('UPDATE hub_stock SET qtd = qtd + ? WHERE product_id = ? AND hub_id = ?').run(
+            qtd,
+            pid,
+            order.hub_id
+          );
+        }
+      }
+    });
+    if (order.credito_status && order.credito_status !== 'cancelado' && order.credito_status !== 'paga') {
+      db.prepare('UPDATE orders SET credito_status = \'cancelado\' WHERE id = ?').run(req.params.id);
+    }
+  }
+  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ ok: true, status: status });
+});
+
+app.put('/api/admin/orders/:id', requireAdmin, function (req, res) {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
+  if (!items || !items.length) return res.status(400).json({ erro: 'Envie os itens do pedido.' });
+  const clean = [];
+  let subtotal = 0;
+  for (const it of items) {
+    const nome = trimOrNull(it && it.nome);
+    const preco = validNumber(it && it.preco);
+    const qtd = Math.round(validNumber(it && it.qtd) || 0);
+    if (!nome || preco == null || preco < 0 || qtd < 1) {
+      return res.status(400).json({ erro: 'Item inválido no pedido.' });
+    }
+    clean.push({ key: it.key || null, pid: it.pid || null, nome: nome, preco: preco, qtd: qtd, det: it.det || null });
+    subtotal += preco * qtd;
+  }
+  subtotal = Math.round(subtotal * 100) / 100;
+  let desconto = Number(order.desconto) || 0;
+  let credito = Number(order.credito) || 0;
+  if (order.coupon_code) {
+    const coupon = findCoupon(order.coupon_code);
+    if (coupon) {
+      desconto = Math.round(subtotal * (Number(coupon.desconto) || 0) * 100) / 100;
+      credito =
+        coupon.kind === 'inf'
+          ? Math.round((subtotal - desconto) * (Number(coupon.credito) || 0) * 100) / 100
+          : 0;
+    }
+  }
+  let persoPreco = 0;
+  if (order.perso_json) {
+    const saved = safeJson(order.perso_json, null);
+    persoPreco = saved ? Number(saved.preco) || 0 : 0;
+  }
+  const total = Math.round((subtotal - desconto + persoPreco + (Number(order.frete) || 0)) * 100) / 100;
+  adjustOrderStock(order, safeJson(order.itens, []), clean);
+  db.prepare('UPDATE orders SET itens = ?, subtotal = ?, desconto = ?, credito = ?, total = ? WHERE id = ?').run(
+    JSON.stringify(clean),
+    subtotal,
+    desconto,
+    credito,
+    total,
+    req.params.id
+  );
+  res.json({ ok: true, pedido: { id: order.id, subtotal: subtotal, desconto: desconto, credito: credito, total: total } });
 });
 
 /* ---------- admin: avaliações ---------- */
@@ -293,6 +376,161 @@ app.get('/api/admin/stats', requireAdmin, function (req, res) {
     recentes: recentes,
     baixoEstoque: baixoEstoque,
   });
+});
+
+/* ---------- admin: influenciadores ---------- */
+
+function influencerAdminOut(row) {
+  const code = row.coupon_code || null;
+  let pedidos = 0;
+  let vendas = 0;
+  let liberado = 0;
+  if (code) {
+    const agg = db
+      .prepare(
+        'SELECT COUNT(*) AS n, COALESCE(SUM(subtotal), 0) AS vendas FROM orders WHERE coupon_code = ? AND status != \'cancelado\' AND credito_status != \'cancelado\''
+      )
+      .get(code);
+    pedidos = Number(agg.n) || 0;
+    vendas = Number(agg.vendas) || 0;
+    const lib = db
+      .prepare(
+        "SELECT COALESCE(SUM(credito), 0) AS total FROM orders WHERE coupon_code = ? AND credito_status = 'liberada'"
+      )
+      .get(code);
+    liberado = Number(lib.total) || 0;
+  }
+  const pago = db
+    .prepare('SELECT COALESCE(SUM(valor), 0) AS total FROM payments WHERE influencer_id = ?')
+    .get(row.id);
+  return {
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    telefone: row.telefone || '',
+    cpf: row.cpf || '',
+    cidade: row.cidade || '',
+    rede: row.rede || '',
+    usuario: row.usuario_rede || '',
+    seg: row.seguidores || '',
+    pixTipo: row.pix_tipo || '',
+    pixChave: row.pix_chave || '',
+    cupom: code || '',
+    status: row.status || 'pendente',
+    criadoEm: row.criado_em || '',
+    pedidos: pedidos,
+    vendas: vendas,
+    liberado: liberado,
+    recebido: Number(pago.total) || 0,
+  };
+}
+
+app.get('/api/admin/influenciadores', requireAdmin, function (req, res) {
+  const status = trimOrNull(req.query.status);
+  const rows = status
+    ? db.prepare('SELECT * FROM influencers WHERE status = ? ORDER BY criado_em DESC').all(status)
+    : db.prepare('SELECT * FROM influencers ORDER BY criado_em DESC').all();
+  res.json(rows.map(influencerAdminOut));
+});
+
+app.get('/api/admin/influenciadores/:id', requireAdmin, function (req, res) {
+  const inf = db.prepare('SELECT * FROM influencers WHERE id = ?').get(req.params.id);
+  if (!inf) return res.status(404).json({ erro: 'Influenciador não encontrado.' });
+  const coupon = inf.coupon_code ? findCoupon(inf.coupon_code) : null;
+  const pedidos = inf.coupon_code
+    ? db
+        .prepare('SELECT * FROM orders WHERE coupon_code = ? ORDER BY id DESC')
+        .all(inf.coupon_code)
+        .map(function (o) {
+          const itens = safeJson(o.itens, []);
+          const itemTxt = itens.length
+            ? itens.map(function (i) { return (i.qtd || 1) + 'x ' + (i.nome || 'item'); }).join(', ')
+            : 'Pedido';
+          return {
+            id: o.id,
+            item: itemTxt,
+            sub: Number(o.subtotal) || 0,
+            desconto: Number(o.desconto) || 0,
+            credito: Number(o.credito) || 0,
+            s: o.credito_status || o.status || 'aguardando',
+            d: o.criado_em ? String(o.criado_em).slice(5, 10) : '',
+            cu: o.cliente_nome || 'Cliente',
+          };
+        })
+    : [];
+  const pagamentos = db
+    .prepare('SELECT pago_em, valor FROM payments WHERE influencer_id = ? ORDER BY id DESC')
+    .all(inf.id)
+    .map(function (p) {
+      return { d: String(p.pago_em || '').slice(0, 10), valor: Number(p.valor) || 0 };
+    });
+  res.json({
+    influenciador: influencerAdminOut(inf),
+    cupom: coupon ? couponOut(coupon) : null,
+    pedidos: pedidos,
+    pagamentos: pagamentos,
+  });
+});
+
+app.patch('/api/admin/influenciadores/:id', requireAdmin, function (req, res) {
+  const acao = trimOrNull(req.body && req.body.acao);
+  const inf = db.prepare('SELECT * FROM influencers WHERE id = ?').get(req.params.id);
+  if (!inf) return res.status(404).json({ erro: 'Influenciador não encontrado.' });
+  const status = inf.status || 'pendente';
+  if (acao === 'aprovar') {
+    if (status !== 'pendente' && status !== 'rejeitado') {
+      return res.status(400).json({ erro: 'Só é possível aprovar cadastro pendente ou rejeitado.' });
+    }
+    const regras = couponRules();
+    let code = inf.coupon_code || '';
+    if (!code) {
+      const base = slugify(inf.nome).replace(/-/g, '').toUpperCase().slice(0, 8) || 'INFLU';
+      code = base + Math.floor(10 + Math.random() * 90);
+      let i = 2;
+      while (findCoupon(code)) code = base + (10 + Math.floor(Math.random() * 90)) + i++;
+      db.prepare(
+        'INSERT INTO coupons (code, kind, nome, email, cidade, pix_chave, pix_tipo, desconto, credito, ativo) VALUES (?, \'inf\', ?, ?, ?, ?, ?, ?, ?, 1)'
+      ).run(
+        code,
+        inf.nome,
+        inf.email,
+        inf.cidade || null,
+        inf.pix_chave || null,
+        inf.pix_tipo || null,
+        regras.descontoPadrao,
+        regras.creditoPadrao
+      );
+    }
+    db.prepare('UPDATE influencers SET status = \'ativo\', ativo = 1, coupon_code = ? WHERE id = ?').run(code, inf.id);
+    const atualizado = db.prepare('SELECT * FROM influencers WHERE id = ?').get(inf.id);
+    res.json({ ok: true, influenciador: influencerAdminOut(atualizado), cupom: couponOut(findCoupon(code)) });
+    return;
+  }
+  if (acao === 'rejeitar') {
+    if (status !== 'pendente') {
+      return res.status(400).json({ erro: 'Só é possível rejeitar cadastro pendente.' });
+    }
+    db.prepare("UPDATE influencers SET status = 'rejeitado', ativo = 0 WHERE id = ?").run(inf.id);
+    res.json({ ok: true, influenciador: influencerAdminOut(db.prepare('SELECT * FROM influencers WHERE id = ?').get(inf.id)) });
+    return;
+  }
+  if (acao === 'pausar') {
+    if (status !== 'ativo') {
+      return res.status(400).json({ erro: 'Só é possível pausar influenciador ativo.' });
+    }
+    db.prepare("UPDATE influencers SET status = 'pausado', ativo = 0 WHERE id = ?").run(inf.id);
+    res.json({ ok: true, influenciador: influencerAdminOut(db.prepare('SELECT * FROM influencers WHERE id = ?').get(inf.id)) });
+    return;
+  }
+  if (acao === 'ativar') {
+    if (status !== 'pausado' && status !== 'rejeitado') {
+      return res.status(400).json({ erro: 'Só é possível ativar influenciador pausado ou rejeitado.' });
+    }
+    db.prepare("UPDATE influencers SET status = 'ativo', ativo = 1 WHERE id = ?").run(inf.id);
+    res.json({ ok: true, influenciador: influencerAdminOut(db.prepare('SELECT * FROM influencers WHERE id = ?').get(inf.id)) });
+    return;
+  }
+  res.status(400).json({ erro: 'Ação inválida.' });
 });
 }
 

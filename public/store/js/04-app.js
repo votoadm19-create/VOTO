@@ -9,7 +9,7 @@
             arg = h.slice(8);
             if (byId[arg]) v = 'produto';
           } else if (
-            ['categorias', 'carrinho', 'montar', 'mais', 'conta', 'sobre'].indexOf(
+            ['categorias', 'carrinho', 'montar', 'mais', 'conta', 'sobre', 'termos', 'privacidade'].indexOf(
               h
             ) > -1
           )
@@ -35,7 +35,11 @@
                         ? vAccount()
                         : v === 'sobre'
                           ? vAbout()
-                          : vHome();
+                          : v === 'termos'
+                            ? vTermos()
+                            : v === 'privacidade'
+                              ? vPrivacidade()
+                              : vHome();
           $('#app').innerHTML = html;
           $('#foot').innerHTML = footHTML();
           if (v === 'conta' && S.user) loadOrders();

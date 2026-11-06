@@ -101,6 +101,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 /* entrada */
 .auth { margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+.auth-centered { margin: 32px auto 0; display: grid; grid-template-columns: 1fr; max-width: 640px; }
+.reg-sec { display: grid; gap: 12px; }
+.reg-sec h3 { margin: 6px 0 0; font-size: 14px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.check { width: 56px; height: 56px; margin: 6px auto 2px; border-radius: 50%; background: var(--good-soft); color: var(--good); display: grid; place-items: center; font-size: 28px; font-weight: 800; }
 @media (min-width: 880px) { .auth { grid-template-columns: 1fr 1.1fr; gap: 24px; margin-top: 32px; } .pitch { position: sticky; top: 84px; } }
 .form-side { order: -1; min-width: 0; }
 @media (min-width: 880px) { .form-side { order: 0; } }

@@ -61,12 +61,18 @@
   var state = { disc: 0.03, credit: 0.03, base: "paid", goal: 100, payDay: 30, hold: 7, portal: "" };
   var lastAccess = null;   /* acesso recém criado ou senha nova, mostrado uma vez */
   var ME = "";
+  var editCode = null;
   var filter = "todas", filterAff = "todos", nextId = 1074;
   var applied = null;   /* cupom aplicado no carrinho do simulador */
   var coupons = [], orders = [], history = [];
 
   function apiJSON(url, opts) {
-    return fetch(url, Object.assign({ headers: {} }, opts || {}))
+    var o = Object.assign({ headers: {} }, opts || {});
+    if (o.body && typeof o.body !== 'string') {
+      o.body = JSON.stringify(o.body);
+      o.headers['Content-Type'] = 'application/json';
+    }
+    return fetch(url, o)
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (data) {
           if (!r.ok) throw new Error(data.erro || "Não foi possível concluir a ação.");
@@ -113,7 +119,7 @@
         var html = '<div class="head"><h1>Cupons</h1><p>Use o cupom no carrinho para ganhar desconto. Se você é influenciador, entre com o acesso que a Voto criou para você.</p></div>';
         html += list.length
           ? '<div class="panel"><div class="panel-h"><h2>Cupons ativos</h2></div><ul class="feed">' + list.map(function (c) {
-              return '<li><div><div class="t">' + esc(c.name) + '</div><div class="s">' + pct(c.disc) + ' de desconto</div></div><div class="c"><code>' + esc(c.code) + '</code></div></li>';
+              return '<li><div><div class="t">' + esc(c.name) + '</div><div class="s">' + pct(c.disc) + ' de desconto' + (c.minimo ? ' · compra mínima de ' + brl(c.minimo) : '') + (c.validade ? ' · até ' + c.validade.slice(8, 10) + '/' + c.validade.slice(5, 7) + '/' + c.validade.slice(0, 4) : '') + '</div></div><div class="c"><code>' + esc(c.code) + '</code></div></li>';
             }).join("") + "</ul></div>"
           : '<div class="panel"><p>Nenhum cupom promocional ativo no momento.</p></div>';
         html += '<div class="panel"><div class="panel-h"><h2>É influenciador?</h2></div><p>Entre com o e-mail e a senha criados pela Voto.</p><p style="margin-top:12px"><a class="btn" href="/influenciador">Entrar no portal do influenciador</a></p></div>';
@@ -228,7 +234,12 @@
       var mine = orders.filter(function (o) { return o.c === a.code; });
       var ok = mine.filter(counts);
       var sub = a.kind === "inf" ? esc(a.city || "—") + " · Pix " + esc(a.pix ? "••••" + a.pix.slice(-4) : "não cadastrado") + "<br>Acesso: " + esc(a.email || "sem e-mail") : "Sem dono, não gera crédito";
-      return '<tr class="' + (a.on ? "" : "off") + '"><td><div class="who">' + esc(a.name) + "<small>" + sub + '</small></div><span class="code">' + esc(a.code) + '</span></td><td><span class="pill ' + (a.kind === "inf" ? "inf" : "promo") + '">' + (a.kind === "inf" ? "Influenciador" : "Promocional") + '</span></td><td class="r">' + pct(a.disc) + '</td><td class="r">' + (a.kind === "inf" ? pct(a.credit) : "—") + '</td><td><span class="pill ' + (a.on ? "ativo" : "pausado") + '">' + (a.on ? "Ativo" : "Pausado") + '</span></td><td class="r">' + ok.length + '</td><td class="r sold">' + brl(sum(ok, paid)) + '</td><td class="r">' + (a.kind === "inf" ? brl(liberado(a.code)) : "—") + '</td><td><div class="acts"><button class="btn xs ghost" data-action="toggle" data-code="' + esc(a.code) + '">' + (a.on ? "Pausar" : "Ativar") + "</button>" + (a.kind === "inf" ? '<button class="btn xs ghost" data-action="resetpw" data-code="' + esc(a.code) + '">Nova senha</button>' : "") + "</div></td></tr>";
+      var regras = [];
+      if (a.minimo) regras.push("mín. " + brl(a.minimo));
+      if (a.validade) regras.push("até " + a.validade.slice(8, 10) + "/" + a.validade.slice(5, 7) + "/" + a.validade.slice(0, 4));
+      regras.push("usos " + a.usos + (a.limiteUso ? "/" + a.limiteUso : ""));
+      sub += "<br>" + esc(regras.join(" · "));
+      return '<tr class="' + (a.on ? "" : "off") + '"><td><div class="who">' + esc(a.name) + "<small>" + sub + '</small></div><span class="code">' + esc(a.code) + '</span></td><td><span class="pill ' + (a.kind === "inf" ? "inf" : "promo") + '">' + (a.kind === "inf" ? "Influenciador" : "Promocional") + '</span></td><td class="r">' + pct(a.disc) + '</td><td class="r">' + (a.kind === "inf" ? pct(a.credit) : "—") + '</td><td><span class="pill ' + (a.on ? "ativo" : "pausado") + '">' + (a.on ? "Ativo" : "Pausado") + '</span></td><td class="r">' + ok.length + '</td><td class="r sold">' + brl(sum(ok, paid)) + '</td><td class="r">' + (a.kind === "inf" ? brl(liberado(a.code)) : "—") + '</td><td><div class="acts"><button class="btn xs ghost" data-action="edit" data-code="' + esc(a.code) + '">Editar</button><button class="btn xs ghost" data-action="toggle" data-code="' + esc(a.code) + '">' + (a.on ? "Pausar" : "Ativar") + "</button>" + (a.kind === "inf" ? '<button class="btn xs ghost" data-action="resetpw" data-code="' + esc(a.code) + '">Nova senha</button>' : "") + "</div></td></tr>";
     }).join("");
     function setv(id, v) { if (document.activeElement !== $(id)) $(id).value = v; }
     setv("r-disc", state.disc * 100); setv("r-credit", state.credit * 100); setv("r-goal", state.goal); setv("r-day", state.payDay); setv("r-hold", state.hold); setv("r-portal", state.portal);
@@ -484,6 +495,29 @@
         .catch(function (err) { toast(err.message || "Não foi possível gerar a nova senha."); });
       return;
     }
+    else if (act === "edit") {
+      var ecp = cp(code);
+      if (!ecp) return;
+      editCode = ecp;
+      $("n-name").value = ecp.name;
+      $("n-code").value = ecp.code;
+      $("n-disc").value = Math.round(ecp.disc * 1000) / 10;
+      $("n-credit").value = Math.round(ecp.credit * 1000) / 10;
+      $("n-min").value = ecp.minimo || "";
+      $("n-val").value = (ecp.validade || "").slice(0, 10);
+      $("n-lim").value = ecp.limiteUso || "";
+      syncEditUi();
+      toast("Editando " + code + ". Altere os valores e salve.");
+      try { $("new-form").scrollIntoView({ behavior: "smooth", block: "center" }); } catch (err2) {}
+      return;
+    }
+    else if (act === "canceledit") {
+      editCode = null;
+      $("new-form").reset();
+      kindForm();
+      syncEditUi();
+      return;
+    }
     else if (act === "toggle") {
       var a = cp(code);
       if (!a) return;
@@ -513,38 +547,69 @@
   $("n-kind").addEventListener("change", kindForm);
   $("new-form").addEventListener("submit", function (e) {
     e.preventDefault();
-    var kind = $("n-kind").value, inf = kind === "inf";
+    var editing = editCode;
+    var kind = editing ? editing.kind : $("n-kind").value, inf = kind === "inf";
     var name = $("n-name").value.trim();
-    var code = $("n-code").value.trim().toUpperCase().replace(/\s+/g, "");
+    var code = editing ? editing.code : $("n-code").value.trim().toUpperCase().replace(/\s+/g, "");
     var disc = Number($("n-disc").value), credit = Number($("n-credit").value);
     if (!name) return;
     if (!(disc > 0 && disc <= 50)) return toast("O desconto precisa ficar entre 1% e 50%.");
     if (inf && !(credit >= 0 && credit <= 30)) return toast("O crédito precisa ficar entre 0% e 30%.");
-    if (code && !/^[A-Z0-9]{4,14}$/.test(code)) return toast("O código precisa ter de 4 a 14 letras ou números.");
-    if (code && cp(code)) return toast("Esse código já existe. Escolha outro.");
-    var email = inf ? $("n-email").value.trim().toLowerCase() : "", pass = inf ? $("n-pass").value : "";
-    if (inf && !emailOk(email)) return toast("Digite o e-mail de acesso do influenciador.");
-    if (inf && coupons.some(function (c) { return c.email === email; })) return toast("Já existe um acesso com esse e-mail.");
-    if (inf && pass.length < 8) return toast("A senha precisa ter pelo menos 8 caracteres. Use o botão Gerar.");
-    apiJSON("/api/admin/coupons", {
-      method: "POST",
-      body: {
-        code: code || null, kind: kind, nome: name, email: email || null,
-        cidade: inf ? $("n-city").value.trim() : "", pix: inf ? $("n-pix").value.trim() : "",
-        desconto: disc / 100, credito: inf ? credit / 100 : 0,
-        senha: inf ? pass : null, ativo: true,
-      },
-    })
+    if (!editing && code && !/^[A-Z0-9]{4,14}$/.test(code)) return toast("O código precisa ter de 4 a 14 letras ou números.");
+    if (!editing && code && cp(code)) return toast("Esse código já existe. Escolha outro.");
+    var email = editing ? editing.email : (inf ? $("n-email").value.trim().toLowerCase() : ""), pass = editing ? "" : (inf ? $("n-pass").value : "");
+    if (!editing && inf && !emailOk(email)) return toast("Digite o e-mail de acesso do influenciador.");
+    if (!editing && inf && coupons.some(function (c) { return c.email === email; })) return toast("Já existe um acesso com esse e-mail.");
+    if (!editing && inf && pass.length < 8) return toast("A senha precisa ter pelo menos 8 caracteres. Use o botão Gerar.");
+    var body = {
+      code: code || null, kind: kind, nome: name, email: email || null,
+      cidade: inf ? (editing ? editing.city : $("n-city").value.trim()) : "",
+      pix: inf ? (editing ? editing.pix : $("n-pix").value.trim()) : "",
+      desconto: disc / 100, credito: inf ? credit / 100 : 0,
+      minimo: Number($("n-min").value) || 0,
+      validade: $("n-val").value || null,
+      limiteUso: Number($("n-lim").value) || 0,
+      senha: inf && !editing ? pass : null, ativo: editing ? editing.on : true,
+    };
+    apiJSON(
+      editing ? "/api/admin/coupons/" + encodeURIComponent(code) : "/api/admin/coupons",
+      { method: editing ? "PUT" : "POST", body: body }
+    )
       .then(function (data) {
-        var created = data.cupom || { code: code };
-        lastAccess = inf ? { name: name, code: created.code, email: email, pass: pass } : null;
+        var op = data.cupom || { code: code };
+        lastAccess = editing ? null : (inf ? { name: name, code: op.code, email: email, pass: pass } : null);
         return loadPainel().then(function () {
-          toast(inf ? "Cupom " + created.code + " e acesso criados. Copie a mensagem para enviar." : "Cupom " + created.code + " criado: " + pct(disc / 100) + " de desconto");
+          toast(editing ? "Cupom " + op.code + " atualizado." : (inf ? "Cupom " + op.code + " e acesso criados. Copie a mensagem para enviar." : "Cupom " + op.code + " criado: " + pct(disc / 100) + " de desconto"));
         });
       })
-      .then(function () { e.target.reset(); kindForm(); })
-      .catch(function (err) { toast(err.message || "Não foi possível criar o cupom."); });
+      .then(function () {
+        if (editing) { editCode = null; }
+        e.target.reset(); kindForm();
+        syncEditUi();
+      })
+      .catch(function (err) { toast(err.message || (editing ? "Não foi possível atualizar o cupom." : "Não foi possível criar o cupom.")); });
   });
+
+  function syncEditUi() {
+    var form = $("new-form");
+    if (!form) return;
+    var btn = form.querySelector("button[type=submit]");
+    if (btn) btn.textContent = editCode ? "Salvar alterações" : "Criar cupom";
+    var kindSel = $("n-kind");
+    if (kindSel) kindSel.disabled = !!editCode;
+    var cancel = document.getElementById("n-cancel");
+    if (cancel && !editCode) cancel.remove();
+    if (editCode) {
+      var existing = document.getElementById("n-editbar");
+      if (!existing) {
+        var bar = document.createElement("div");
+        bar.className = "field";
+        bar.id = "n-editbar";
+        bar.innerHTML = '<button class="btn ghost" type="button" data-action="canceledit">Cancelar edição</button>';
+        form.appendChild(bar);
+      }
+    }
+  }
   $("rules-form").addEventListener("submit", function (e) {
     e.preventDefault();
     var d = Number($("r-disc").value), c = Number($("r-credit").value), g = Number($("r-goal").value), day = Number($("r-day").value), h = Number($("r-hold").value);

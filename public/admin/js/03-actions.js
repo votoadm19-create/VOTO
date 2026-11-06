@@ -93,6 +93,54 @@
       } catch (err) {
         toast(err.message);
       }
+    } else if (action === 'inf-ver') {
+      openInfluenciadorModal(id);
+    } else if (action === 'inf-filtro') {
+      state.filtroInfluenciador = btn.dataset.status;
+      renderInfluenciadores();
+    } else if (action === 'inf-aprovar' || action === 'inf-rejeitar' || action === 'inf-pausar' || action === 'inf-ativar') {
+      var acoes = { 'inf-aprovar': 'aprovar', 'inf-rejeitar': 'rejeitar', 'inf-pausar': 'pausar', 'inf-ativar': 'ativar' };
+      var msgs = {
+        aprovar: 'Aprovar este influenciador e gerar o cupom dele?',
+        rejeitar: 'Rejeitar este cadastro?',
+        pausar: 'Pausar o acesso dele ao portal?',
+        ativar: 'Ativar este influenciador?',
+      };
+      if (!confirm(msgs[acoes[action]])) return;
+      try {
+        var res = await api('/api/admin/influenciadores/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          body: { acao: acoes[action] },
+        });
+        state.influenciadores = await api('/api/admin/influenciadores');
+        renderInfluenciadores();
+        var modalAberto = !$('#modal').hidden;
+        if (modalAberto) openInfluenciadorModal(id);
+        toast(
+          acoes[action] === 'aprovar'
+            ? 'Influenciador aprovado' + (res.cupom ? ' · cupom ' + res.cupom.code : '')
+            : acoes[action] === 'rejeitar'
+              ? 'Cadastro rejeitado'
+              : acoes[action] === 'pausar'
+                ? 'Acesso pausado'
+                : 'Influenciador ativado'
+        );
+      } catch (err) {
+        toast(err.message);
+      }
+    } else if (action === 'reset-cliente') {
+      var novaSenha = prompt('Nova senha do cliente (mínimo 6 caracteres):');
+      if (novaSenha == null) return;
+      if (String(novaSenha).length < 6) { toast('A senha precisa ter pelo menos 6 caracteres.'); return; }
+      try {
+        await api('/api/admin/customers/' + encodeURIComponent(id) + '/reset-senha', {
+          method: 'POST',
+          body: { senha: String(novaSenha) },
+        });
+        toast('Senha redefinida. Passe a nova senha ao cliente pelo WhatsApp.');
+      } catch (err) {
+        toast(err.message);
+      }
     } else if (action === 'view-cliente') {
       openClienteModal(id);
     } else if (action === 'del-cliente') {
@@ -113,6 +161,24 @@
       }
     } else if (action === 'view-pedido') {
       openPedidoModal(id);
+    } else if (action === 'ped-qty' || action === 'ped-rm') {
+      var idx = Number(btn.dataset.line);
+      if (action === 'ped-rm') {
+        modalPedidoLinhas.splice(idx, 1);
+      } else {
+        modalPedidoLinhas[idx].qtd = Math.max(1, (Number(modalPedidoLinhas[idx].qtd) || 1) + Number(btn.dataset.delta));
+      }
+      openPedidoModal(id, true);
+    } else if (action === 'ped-save') {
+      try {
+        await api('/api/admin/orders/' + encodeURIComponent(id), { method: 'PUT', body: { items: modalPedidoLinhas } });
+        state.pedidos = await api('/api/admin/orders');
+        renderPedidos();
+        openPedidoModal(id);
+        toast('Pedido atualizado');
+      } catch (err) {
+        toast(err.message);
+      }
     } else if (action === 'close-modal') {
       closeModal();
     }
@@ -139,6 +205,10 @@
       var arows = $('#avaliacaoRows');
       if (arows) arows.innerHTML = avaliacaoRows();
       atualizaContagemAvaliacoes();
+    } else if (e.target.id === 'buscaInfluenciador') {
+      state.buscaInfluenciador = e.target.value;
+      var irows = $('#influenciadorRows');
+      if (irows) irows.innerHTML = influenciadorRows();
     } else if (e.target.id === 'imgUrl') {
       var hidden = $('#fotoInput');
       if (hidden) hidden.value = e.target.value.trim();

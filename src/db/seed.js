@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const crypto = require('crypto');
 const { db } = require('./sqlite');
 const { SEED_FILE } = require('../config');
 const { hashPassword } = require('../lib/auth');
@@ -42,21 +43,25 @@ function seedAdmin() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM admins').get().n;
   if (count > 0) return;
   const usuario = process.env.ADMIN_USER || 'admin';
-  const senha = process.env.ADMIN_PASS || 'voto123';
+  const gerada = !process.env.ADMIN_PASS;
+  const senha = process.env.ADMIN_PASS || crypto.randomBytes(12).toString('base64url');
   db.prepare('INSERT INTO admins (usuario, nome, senha) VALUES (?, ?, ?)').run(
     usuario,
     'Administrador',
     hashPassword(senha)
   );
-  console.log('Administrador criado: usuário "' + usuario + '" senha "' + senha + '"');
-  if (!process.env.ADMIN_PASS) {
-    console.log('Troque a senha padrão definindo ADMIN_USER e ADMIN_PASS na próxima execução limpa.');
+  console.log('Administrador criado: usuário "' + usuario + '"');
+  if (gerada) {
+    console.log(
+      'SENHA DO PRIMEIRO ACESSO (copie agora, aparece só uma vez): ' + senha
+    );
+    console.log('Defina ADMIN_USER/ADMIN_PASS no .env para escolher as próximas credenciais.');
   }
 }
 
 function seedCuponsOperacao() {
   const regras = couponRules();
-  if (db.prepare('SELECT COUNT(*) AS n FROM coupons').get().n === 0) {
+  if (process.env.VOTO_SEED_DEMO === '1' && db.prepare('SELECT COUNT(*) AS n FROM coupons').get().n === 0) {
     db.prepare(
       'INSERT INTO coupons (code, kind, nome, email, cidade, pix_chave, pix_tipo, desconto, credito, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
     ).run(

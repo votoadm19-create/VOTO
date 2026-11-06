@@ -107,8 +107,57 @@ function couponOut(row) {
     pixTipo: row.pix_tipo || '',
     disc: Number(row.desconto) || 0,
     credit: Number(row.credito) || 0,
+    minimo: Number(row.minimo) || 0,
+    validade: row.validade || '',
+    limiteUso: row.limite_uso == null ? null : Number(row.limite_uso),
+    usos: couponUsos(row.code),
     on: !!row.ativo,
   };
+}
+
+function couponUsos(code) {
+  if (!code) return 0;
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM orders WHERE coupon_code = ? AND status != 'cancelado' AND credito_status != 'cancelado'"
+    )
+    .get(code);
+  return Number(row.n) || 0;
+}
+
+function couponCheck(coupon, subtotal) {
+  if (!coupon || coupon.ativo !== 1) return 'Cupom inválido ou pausado.';
+  if (coupon.validade && coupon.validade < new Date().toISOString().slice(0, 10)) {
+    return 'Cupom vencido.';
+  }
+  if (coupon.limite_uso != null && coupon.limite_uso > 0 && couponUsos(coupon.code) >= Number(coupon.limite_uso)) {
+    return 'Cupom atingiu o limite de usos.';
+  }
+  if (Number(coupon.minimo) > 0 && Number(subtotal || 0) < Number(coupon.minimo)) {
+    return 'Este cupom exige compra mínima de R$ ' + Number(coupon.minimo).toFixed(2) + '.';
+  }
+  return null;
+}
+
+// Ajusta estoque (global + galpão) pela diferença entre itens antigos e novos de um pedido.
+function adjustOrderStock(order, beforeItems, afterItems) {
+  const before = {};
+  (Array.isArray(beforeItems) ? beforeItems : []).forEach(function (it) {
+    if (it && it.pid) before[it.pid] = (before[it.pid] || 0) + (Number(it.qtd) || 0);
+  });
+  const after = {};
+  (Array.isArray(afterItems) ? afterItems : []).forEach(function (it) {
+    if (it && it.pid) after[it.pid] = (after[it.pid] || 0) + (Number(it.qtd) || 0);
+  });
+  const pids = new Set(Object.keys(before).concat(Object.keys(after)));
+  pids.forEach(function (pid) {
+    const delta = (after[pid] || 0) - (before[pid] || 0);
+    if (!delta) return;
+    db.prepare('UPDATE products SET estoque = MAX(estoque - ?, 0) WHERE id = ?').run(delta, pid);
+    if (order.hub_id) {
+      db.prepare('UPDATE hub_stock SET qtd = MAX(qtd - ?, 0) WHERE product_id = ? AND hub_id = ?').run(delta, pid, order.hub_id);
+    }
+  });
 }
 
 function hubForCidade(cidade) {
@@ -147,7 +196,7 @@ function readProductBody(body) {
   const estoque = validNumber(body.estoque);
   if (!nome) return { erro: 'Informe o nome do produto.' };
   if (CATEGORIES.indexOf(cat) < 0) return { erro: 'Categoria inválida.' };
-  if (preco == null || preco < 0) return { erro: 'Informe um preço válido.' };
+  if (preco == null || preco <= 0) return { erro: 'Informe um preço válido.' };
   if (de != null && de <= preco) return { erro: 'O preço "de" deve ser maior que o preço atual.' };
   return {
     data: {
@@ -181,6 +230,9 @@ module.exports = {
   couponRules,
   findCoupon,
   couponOut,
+  couponUsos,
+  couponCheck,
+  adjustOrderStock,
   hubForCidade,
   hubOut,
   readProductBody,

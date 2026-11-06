@@ -425,7 +425,10 @@
         detail('CPF', cpfFmt(c.cpf)) +
         detail('Cadastrado em', fmtDate(c.criado_em)) +
         '</div>' +
-        '<h3 style="font-size:15px;margin:0 0 10px">Pedidos (' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn ghost small" data-action="reset-cliente" data-id="' +
+        c.id +
+        '">Redefinir senha</button></div>' +
+        '<h3 style="font-size:15px;margin:14px 0 8px">Pedidos (' +
         pedidos.length +
         ')</h3>' +
         (pedidos.length
@@ -606,12 +609,23 @@
     );
   }
 
-  function openPedidoModal(id) {
+  var modalPedidoLinhas = null;
+
+  function openPedidoModal(id, keepLines) {
     var o = state.pedidos.filter(function (x) {
       return String(x.id) === String(id);
     })[0];
     if (!o) return;
+    if (!keepLines) {
+      modalPedidoLinhas = (o.itens || []).map(function (it) {
+        return { key: it.key || null, pid: it.pid || null, nome: it.nome, preco: it.preco, qtd: it.qtd || 1, det: it.det || null };
+      });
+    }
     $('#modalTitle').textContent = 'Pedido #' + o.id;
+    var fone = String(o.cliente_telefone || '').replace(/\D/g, '');
+    var waMsg = 'Olá! Sobre o seu pedido #' + o.id + ' na Voto. ' + money(o.total);
+    var wa = fone ? '<a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/55' + fone + '?text=' + encodeURIComponent(waMsg) + '">WhatsApp do cliente</a>' : '';
+    var editavel = o.status !== 'entregue' && o.status !== 'cancelado';
     $('#modalBody').innerHTML =
       '<div class="detail-grid">' +
       detail('Cliente', o.cliente_nome || 'Cliente') +
@@ -621,14 +635,39 @@
       detail('Status', STATUS_LABEL[o.status] || o.status) +
       detail('Data', fmtDate(o.criado_em)) +
       '</div>' +
+      (wa ? '<div style="margin:12px 0">' + wa + '</div>' : '') +
       '<h3 style="font-size:15px;margin:0 0 8px">Itens</h3>' +
-      itensHtml(o.itens) +
+      (editavel ? pedalinhas(modalPedidoLinhas) : itensHtml(o.itens)) +
+      (editavel ? '<div style="margin:12px 0 8px"><button class="btn primary" data-action="ped-save" data-id="' + o.id + '">Salvar alterações nos itens</button></div>' : '') +
       '<div class="detail-grid" style="margin-top:16px">' +
       detail('Subtotal', money(o.subtotal)) +
       detail('Entrega', money(o.frete)) +
       detail('Total', money(o.total)) +
       '</div>';
     openModal();
+  }
+
+  function pedalinhas(linhas) {
+    var editable = true;
+    if (!Array.isArray(linhas) || !linhas.length) return '<p class="hint">Sem itens registrados.</p>';
+    return (
+      '<ul class="order-items">' +
+      linhas
+        .map(function (it, idx) {
+          return '<li>' +
+            esc(it.nome || 'Item') +
+            ' — ' +
+            money((Number(it.preco) || 0) * (Number(it.qtd) || 1)) +
+            ' <span style="display:inline-flex;gap:6px;align-items:center;margin-left:8px">' +
+            '<button class="btn ghost small" data-action="ped-qty" data-line="' + idx + '" data-delta="-1">−</button>' +
+            '<b>' + (Number(it.qtd) || 1) + '</b>' +
+            '<button class="btn ghost small" data-action="ped-qty" data-line="' + idx + '" data-delta="1">+</button>' +
+            (editable && linhas.length > 1 ? '<button class="btn danger small" data-action="ped-rm" data-line="' + idx + '">Remover</button>' : '') +
+            '</span></li>';
+        })
+        .join('') +
+      '</ul>'
+    );
   }
 
   /* ---------- avaliações ---------- */
@@ -707,6 +746,209 @@
   function atualizaContagemAvaliacoes() {
     var el = $('#avaliacaoCount');
     if (el) el.textContent = avaliacoesFiltradas().length;
+  }
+
+  /* ---------- influenciadores ---------- */
+
+  var INF_STATUS_LABEL = {
+    pendente: 'Pendente',
+    ativo: 'Ativo',
+    pausado: 'Pausado',
+    rejeitado: 'Rejeitado',
+  };
+  var INF_STATUS_CLASS = {
+    pendente: 'warn',
+    ativo: 'on',
+    pausado: 'off',
+    rejeitado: 'bad',
+  };
+
+  function influenciadoresFiltrados() {
+    var q = state.buscaInfluenciador.trim().toLowerCase();
+    return state.influenciadores.filter(function (i) {
+      if (state.filtroInfluenciador !== 'todos' && (i.status || 'pendente') !== state.filtroInfluenciador) return false;
+      if (!q) return true;
+      return (i.nome + ' ' + i.email + ' ' + (i.cidade || '') + ' ' + (i.cupom || ''))
+        .toLowerCase()
+        .indexOf(q) > -1;
+    });
+  }
+
+  function infAcoes(i) {
+    var st = i.status || 'pendente';
+    var btns = '';
+    if (st === 'pendente' || st === 'rejeitado') {
+      btns += '<button class="btn primary small" data-action="inf-aprovar" data-id="' + i.id + '">Aprovar</button>';
+    }
+    if (st === 'pendente') {
+      btns += '<button class="btn danger small" data-action="inf-rejeitar" data-id="' + i.id + '">Rejeitar</button>';
+    }
+    if (st === 'ativo') {
+      btns += '<button class="btn ghost small" data-action="inf-pausar" data-id="' + i.id + '">Pausar</button>';
+    }
+    if (st === 'pausado' || st === 'rejeitado') {
+      btns += '<button class="btn primary small" data-action="inf-ativar" data-id="' + i.id + '">Ativar</button>';
+    }
+    return btns;
+  }
+
+  function influenciadorRows() {
+    var list = influenciadoresFiltrados();
+    if (!list.length) {
+      return '<tr><td colspan="7"><div class="empty-state"><b>Nenhum influenciador encontrado</b>Cadastros feitos na página de influenciadores aparecem aqui.</div></td></tr>';
+    }
+    return list
+      .map(function (i) {
+        return (
+          '<tr><td class="name-cell"><strong>' +
+          esc(i.nome) +
+          '</strong><small>' +
+          esc(i.email) +
+          '</small></td>' +
+          '<td><span class="pill ' +
+          (INF_STATUS_CLASS[i.status] || 'off') +
+          '">' +
+          esc(INF_STATUS_LABEL[i.status] || i.status || 'Pendente') +
+          '</span></td>' +
+          '<td>' +
+          esc([i.cidade, i.rede].filter(Boolean).join(' · ') || '—') +
+          '</td>' +
+          '<td>' +
+          esc(i.cupom || '—') +
+          '</td>' +
+          '<td>' +
+          i.pedidos +
+          '</td>' +
+          '<td>' +
+          money(i.vendas || 0) +
+          '</td>' +
+          '<td class="actions"><button class="btn ghost small" data-action="inf-ver" data-id="' +
+          i.id +
+          '">Ver</button>' +
+          infAcoes(i) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+  }
+
+  function renderInfluenciadores() {
+    var pendentes = state.influenciadores.filter(function (i) { return (i.status || 'pendente') === 'pendente'; }).length;
+    var ativos = state.influenciadores.filter(function (i) { return (i.status || 'pendente') === 'ativo'; }).length;
+    var filtros = [
+      ['todos', 'Todos (' + state.influenciadores.length + ')'],
+      ['pendente', 'Pendentes (' + pendentes + ')'],
+      ['ativo', 'Ativos (' + ativos + ')'],
+      ['pausado', 'Pausados'],
+      ['rejeitado', 'Rejeitados'],
+    ];
+    $('#view').innerHTML =
+      '<div class="panel"><div class="panel-head"><h2>Influenciadores <span class="pill off" id="influenciadorCount">' +
+      state.influenciadores.length +
+      '</span></h2><div class="toolbar"><input type="search" id="buscaInfluenciador" placeholder="Nome, e-mail, cidade ou cupom" value="' +
+      esc(state.buscaInfluenciador) +
+      '"></div></div>' +
+      '<div class="chips">' +
+      filtros
+        .map(function (f) {
+          return '<button class="chip' + (state.filtroInfluenciador === f[0] ? ' on' : '') + '" data-action="inf-filtro" data-status="' + f[0] + '">' + esc(f[1]) + '</button>';
+        })
+        .join('') +
+      '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Influenciador</th><th>Situação</th><th>Cidade / rede</th><th>Cupom</th><th>Pedidos</th><th>Vendas</th><th></th></tr></thead><tbody id="influenciadorRows">' +
+      influenciadorRows() +
+      '</tbody></table></div></div>';
+  }
+
+  async function openInfluenciadorModal(id) {
+    $('#modalTitle').textContent = 'Detalhes do influenciador';
+    $('#modalBody').innerHTML = '<div class="empty-state"><b>Carregando…</b></div>';
+    openModal();
+    try {
+      var data = await api('/api/admin/influenciadores/' + encodeURIComponent(id));
+      var i = data.influenciador;
+      var cupom = data.cupom;
+      var pedidos = data.pedidos || [];
+      var pags = data.pagamentos || [];
+      var botoes =
+        i.status === 'pendente' || i.status === 'rejeitado'
+          ? '<button class="btn primary" data-action="inf-aprovar" data-id="' + i.id + '">Aprovar e gerar cupom</button>'
+          : '';
+      botoes +=
+        i.status === 'pendente'
+          ? '<button class="btn danger" data-action="inf-rejeitar" data-id="' + i.id + '">Rejeitar cadastro</button>'
+          : '';
+      botoes +=
+        i.status === 'ativo'
+          ? '<button class="btn ghost" data-action="inf-pausar" data-id="' + i.id + '">Pausar acesso</button>'
+          : '';
+      botoes +=
+        i.status === 'pausado' || i.status === 'rejeitado'
+          ? '<button class="btn primary" data-action="inf-ativar" data-id="' + i.id + '">Ativar</button>'
+          : '';
+      $('#modalBody').innerHTML =
+        '<div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>' +
+        esc(i.nome) +
+        '</h2><span class="pill ' +
+        (INF_STATUS_CLASS[i.status] || 'off') +
+        '">' +
+        esc(INF_STATUS_LABEL[i.status] || i.status || 'Pendente') +
+        '</span></div></div>' +
+        '<div class="detail-grid">' +
+        detail('E-mail', i.email) +
+        detail('Telefone', i.telefone || '—') +
+        detail('CPF', cpfFmt(i.cpf)) +
+        detail('Cidade', i.cidade || '—') +
+        detail('Onde divulga', (i.rede || '—') + (i.usuario ? ' · ' + i.usuario : '')) +
+        detail('Alcance', i.seg || '—') +
+        detail('Chave Pix', (i.pixTipo ? i.pixTipo + ': ' : '') + (i.pixChave || '—')) +
+        detail('Cupom', cupom ? cupom.code + ' · ' + cupom.disc * 100 + '% desc / ' + cupom.credit * 100 + '% crédito · ' + (cupom.on ? 'ativo' : 'pausado') : 'Ainda sem cupom') +
+        detail('Cadastrado em', fmtDate(i.criadoEm)) +
+        '</div>' +
+        '<div class="detail-grid">' +
+        detail('Pedidos com o cupom', String(i.pedidos)) +
+        detail('Vendas', money(i.vendas || 0)) +
+        detail('Crédito liberado', money(i.liberado || 0)) +
+        detail('Já recebido (Pix)', money(i.recebido || 0)) +
+        '</div>' +
+        (pedidos.length
+          ? '<h3 style="font-size:15px;margin:14px 0 10px">Pedidos (' +
+            pedidos.length +
+            ')</h3>' +
+            pedidos
+              .map(function (o) {
+                return (
+                  '<div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>#' +
+                  o.id +
+                  ' · ' +
+                  money(o.sub) +
+                  '</h2><span class="pill off">' +
+                  esc(o.s) +
+                  '</span></div><div class="panel-body"><div class="meta" style="color:var(--muted);font-size:12px;margin-bottom:8px">' +
+                  esc(o.d) +
+                  ' · ' +
+                  esc(o.cu) +
+                  ' · crédito ' +
+                  money(o.credito || 0) +
+                  '</div></div></div>'
+                );
+              })
+              .join('')
+          : '<div class="empty-state"><b>Nenhum pedido</b>Este influenciador ainda não gerou vendas com cupom.</div>') +
+        (pags.length
+          ? '<h3 style="font-size:15px;margin:14px 0 10px">Pagamentos Pix (' +
+            pags.length +
+            ')</h3>' +
+            pags
+              .map(function (p) {
+                return '<div class="meta">' + esc(p.d) + ' · <b>' + money(p.valor) + '</b></div>';
+              })
+              .join('')
+          : '') +
+        (botoes ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' + botoes + '</div>' : '');
+    } catch (err) {
+      $('#modalBody').innerHTML = '<div class="empty-state"><b>Erro</b>' + esc(err.message) + '</div>';
+    }
   }
 
   /* ---------- configurações ---------- */

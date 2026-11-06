@@ -600,6 +600,64 @@ function heroHTML() {
           );
         }
 
+        function vTermos() {
+          return (
+            '<div class="in"><div class="stack"><h2 class="sec">Termos de serviço</h2>' +
+            '<div class="panel"><p class="abouttext"><i>Última atualização: 6 de novembro de 2026.</i></p>' +
+            '<div class="abouttitle">1. Sobre a Voto</div>' +
+            '<p class="abouttext">A Voto é uma loja de variedades e materiais escolares que vende pela loja virtual, com confirmação e pagamento pelo WhatsApp (Pix). Ao navegar ou comprar, você concorda com estes termos.</p>' +
+            '<div class="abouttitle">2. Produtos, preços e estoque</div>' +
+            '<p class="abouttext">Preços em reais podem mudar sem aviso prévio, inclusive depois de montar o carrinho; o valor final é sempre confirmado no WhatsApp. O estoque é limitado e a disponibilidade é confirmada no atendimento. Fotografias e descrições são ilustrativas.</p>' +
+            '<div class="abouttitle">3. Pedidos e pagamento</div>' +
+            '<p class="abouttext">Para fechar um pedido pelo site, é preciso criar uma conta. Depois de confirmado no WhatsApp, o pagamento é feito por Pix e só então a entrega é agendada. Por segurança, não aceitamos pagamento por links externos fora do WhatsApp da loja.</p>' +
+            '<div class="abouttitle">4. Entrega</div>' +
+            '<p class="abouttext">Entregamos em Jundiaí e Várzea Paulista, com os valores de frete mostrados no carrinho e prazo de até 3 dias úteis após a confirmação do pagamento. O horário exato é combinado no WhatsApp. Informe o endereço completo e um telefone válido: entregas impossíveis por dados incorretos podem ser cobradas pelo frete.</p>' +
+            '<div class="abouttitle">5. Kits e personalização</div>' +
+            '<p class="abouttext">Kits prontos, kits montados e itens personalizados (nome, turma, etiquetas etc.) têm valor adicional combinado no WhatsApp, conforme o nível escolhido. Itens personalizados são produzidos sob encomenda e não voltam ao estoque.</p>' +
+            '<div class="abouttitle">6. Cancelamento e devolução</div>' +
+            '<p class="abouttext">Você pode cancelar antes da entrega e da confirmação do pagamento pelo atendimento no WhatsApp. Produtos com defeito, danificado ou diferente do pedido: fale com o atendimento em até 7 dias corridos após o recebimento para troca, conserto ou reembolso, conforme o Código de Defesa do Consumidor. Itens personalizados só são trocados se apresentarem defeito ou erro nosso.</p>' +
+            '<div class="abouttitle">7. Cupons e programa de influenciadores</div>' +
+            '<p class="abouttext">Cupons têm validade, compra mínima e limite de usos informados na página de Cupons. Cada cupom vale para uma única compra e não é cumulativo com outras promoções, salvo indicação da loja. No Programa de Influenciadores, o crédito é gerado por compras com o cupom do influenciador, com pagamento por Pix conforme as regras exibidas no portal.</p>' +
+            '<div class="abouttitle">8. Sua conta</div>' +
+            '<p class="abouttext">Use dados verdadeiros no cadastro. Sua conta, favoritos e pedidos são pessoais e intransferíveis: não compartilhe sua senha. Podemos suspender contas usadas com fraude ou violação destes termos.</p>' +
+            '<div class="abouttitle">9. Responsabilidade</div>' +
+            '<p class="abouttext">Nos esforçamos para manter preços e informações atualizados, mas não nos responsabilizamos por prejuízos decorrentes de dados incorretos informados pelo cliente (telefone, endereço, cidade de entrega) ou de indisponibilidade temporária do atendimento.</p>' +
+            '<div class="abouttitle">10. Alterações destes termos</div>' +
+            '<p class="abouttext">Podemos atualizar estes termos a qualquer momento; a versão publicada nesta página passa a valer a partir de sua publicação. Dúvidas: fale com a Voto no WhatsApp pelo rodapé do site.</p></div>' +
+            '<a class="btn2" href="#">Voltar ao início</a></div></div>'
+          );
+        }
+
+        function vPrivacidade() {
+          return (
+            '<div class="in"><div class="stack"><h2 class="sec">Privacidade de dados</h2>' +
+            '<div class="panel"><p class="abouttext"><i>Última atualização: 6 de novembro de 2026. Seguimos a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018).</i></p>' +
+            '<div class="abouttitle">1. Quais dados coletamos</div>' +
+            '<ul class="facts">' +
+            '<li>' + ic('user', 22) + '<span><b>Cadastro da loja:</b> nome, e-mail, telefone, CPF e foto de perfil (quando informado).</span></li>' +
+            '<li>' + ic('box', 22) + '<span><b>Pedidos:</b> itens, cidade de entrega, subtotal, frete e total, além do histórico de compras.</span></li>' +
+            '<li>' + ic('heart', 22) + '<span><b>Interações:</b> produtos favoritados e avaliações enviadas.</span></li>' +
+            '<li>' + ic('users', 22) + '<span><b>Influenciadores:</b> dados de cadastro, rede social, seguidores e chave Pix para pagamento do programa.</span></li>' +
+            '<li>' + ic('shield', 22) + '<span><b>Dados de navegação:</b> carrinho e tema guardados no seu aparelho, além do cookie de sessão, essencial para você continuar logado.</span></li>' +
+            '</ul>' +
+            '<div class="abouttitle">2. Como usamos os dados</div>' +
+            '<p class="abouttext">Usamos os dados para operar a loja: criar e manter sua conta, registrar e entregar pedidos, confirmar pagamento e entrega, prestar atendimento, gerenciar o programa de influenciadores, moderar avaliações e prevenir fraude. Não vendemos seus dados.</p>' +
+            '<div class="abouttitle">3. Compartilhamento</div>' +
+            '<p class="abouttext">Compartilhamos apenas o necessário: mensagens no WhatsApp (para confirmar pedidos e entregas, incluindo seu nome e itens) e provedores essenciais de hospedagem e infraestrutura, sempre com confidencialidade. Não compartilhamos para publicidade de terceiros.</p>' +
+            '<div class="abouttitle">4. Por quanto tempo guardamos</div>' +
+            '<p class="abouttext">Guardamos os dados enquanto sua conta estiver ativa e pelo prazo exigido por lei ou para os fins que motivaram a coleta. Pedidos e pagamentos podem ser mantidos por exigências fiscais.</p>' +
+            '<div class="abouttitle">5. Seus direitos</div>' +
+            '<p class="abouttext">Você pode pedir a confirmação, o acesso, a correção, a anonimização, a eliminação ou a portabilidade dos seus dados, além de revogar consentimentos. É só chamar a Voto no WhatsApp pelo rodapé do site; respondemos seguindo os prazos da LGPD.</p>' +
+            '<div class="abouttitle">6. Cookies e armazenamento local</div>' +
+            '<p class="abouttext">Usamos armazenamento local do navegador (carrinho, tema e preferências) e um cookie de sessão estritamente necessário, protegido com HttpOnly. Não usamos esta versão do site para rastreamento publicitário de terceiros.</p>' +
+            '<div class="abouttitle">7. Segurança</div>' +
+            '<p class="abouttext">Senhas são armazenadas com hash (scrypt) e sessões usam cookie HttpOnly. Mesmo assim, nenhuma transmissão pela internet é 100% imune: proteja sua senha e desconfie de mensagens suspeitas que se passem pela Voto.</p>' +
+            '<div class="abouttitle">8. Alterações desta política</div>' +
+            '<p class="abouttext">Esta política pode mudar; a versão publicada nesta página é a que vale. Dúvidas sobre privacidade: fale com a Voto no WhatsApp pelo rodapé do site.</p></div>' +
+            '<a class="btn2" href="#">Voltar ao início</a></div></div>'
+          );
+        }
+
         function footHTML() {
           return (
             '<div class="in footin">' +
@@ -615,6 +673,8 @@ function heroHTML() {
             '<a href="#montar">Montar meu kit</a>' +
             '<a href="#carrinho">Meu carrinho</a>' +
             '<a href="#conta">Minha conta</a>' +
+            '<a href="#termos">Termos de serviço</a>' +
+            '<a href="#privacidade">Privacidade de dados</a>' +
             '<a href="/influenciador">Programa de influenciadores</a>' +
             '<a href="/cupons">Cupons</a></div>' +
             '<div class="footcol"><b>Atendimento</b>' +

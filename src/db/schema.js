@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS influencers (
   pix_chave TEXT,
   coupon_code TEXT REFERENCES coupons(code) ON DELETE SET NULL,
   ativo INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'ativo',
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -183,6 +184,11 @@ ensureColumn('orders', 'credito_status', 'TEXT');
 ensureColumn('orders', 'hub_id', 'INTEGER');
 ensureColumn('orders', 'op_status', 'TEXT');
 ensureColumn('orders', 'perso_json', 'TEXT');
+ensureColumn('coupons', 'minimo', 'REAL NOT NULL DEFAULT 0');
+ensureColumn('coupons', 'validade', 'TEXT');
+ensureColumn('coupons', 'limite_uso', 'INTEGER');
+ensureColumn('influencers', 'status', "TEXT NOT NULL DEFAULT 'ativo'");
+db.exec("UPDATE influencers SET status = 'pausado' WHERE ativo = 0 AND status = 'ativo'");
 }
 
 module.exports = { initSchema };

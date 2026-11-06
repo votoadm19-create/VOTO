@@ -6,6 +6,7 @@ const { setSetting } = require('../lib/domain');
 const { couponRules } = require('../lib/domain');
 const { findCoupon } = require('../lib/domain');
 const { couponOut } = require('../lib/domain');
+const { couponCheck } = require('../lib/domain');
 const { trimOrNull } = require('../lib/util');
 const { slugify } = require('../lib/util');
 const { validNumber } = require('../lib/util');
@@ -21,14 +22,21 @@ app.get('/cupons', function (req, res) {
 /* ---------- cupons públicos ---------- */
 
 app.get('/api/coupons', function (req, res) {
+  const hoje = new Date().toISOString().slice(0, 10);
   const rows = db
     .prepare(
-      "SELECT code, kind, nome, desconto FROM coupons WHERE ativo = 1 AND kind = 'promo' ORDER BY nome"
+      "SELECT code, kind, nome, desconto, minimo, validade FROM coupons WHERE ativo = 1 AND kind = 'promo' AND (validade IS NULL OR validade >= ?) ORDER BY nome"
     )
-    .all();
+    .all(hoje);
   res.json(
     rows.map(function (r) {
-      return { code: r.code, name: r.nome, disc: Number(r.desconto) || 0 };
+      return {
+        code: r.code,
+        name: r.nome,
+        disc: Number(r.desconto) || 0,
+        minimo: Number(r.minimo) || 0,
+        validade: r.validade || '',
+      };
     })
   );
 });
@@ -36,8 +44,9 @@ app.get('/api/coupons', function (req, res) {
 app.get('/api/coupons/preview', function (req, res) {
   const coupon = findCoupon(req.query.code);
   const subtotal = validNumber(req.query.subtotal) || 0;
-  if (!coupon || coupon.ativo !== 1) {
-    return res.status(404).json({ erro: 'Cupom inválido ou pausado.' });
+  const check = coupon ? couponCheck(coupon, subtotal) : 'Cupom inválido ou pausado.';
+  if (check) {
+    return res.status(404).json({ erro: check });
   }
   const desconto = Math.round(subtotal * (Number(coupon.desconto) || 0) * 100) / 100;
   res.json({
@@ -123,6 +132,15 @@ function couponBody(body) {
   if (!nome) return { erro: 'Informe o nome do cupom/promocional.' };
   if (desconto == null || desconto < 0 || desconto > 0.9) return { erro: 'Desconto inválido (0 a 90%).' };
   if (credito == null || credito < 0 || credito > 0.5) return { erro: 'Crédito inválido (0 a 50%).' };
+  const minimo = validNumber(body && (body.minimo != null ? body.minimo : body.min));
+  let validade = trimOrNull(body && body.validade);
+  let limiteUso = validNumber(body && (body.limiteUso != null ? body.limiteUso : body.limite_uso));
+  if (minimo != null && minimo < 0) return { erro: 'Compra mínima inválida.' };
+  if (validade && !/^\d{4}-\d{2}-\d{2}$/.test(validade)) {
+    return { erro: 'Validade inválida (use AAAA-MM-DD).' };
+  }
+  if (limiteUso != null && limiteUso < 0) return { erro: 'Limite de usos inválido.' };
+  limiteUso = limiteUso == null || limiteUso === 0 ? null : Math.floor(limiteUso);
   return {
     data: {
       kind: kind,
@@ -133,6 +151,9 @@ function couponBody(body) {
       pixTipo: trimOrNull(body && (body.pix_tipo != null ? body.pix_tipo : body.pixTipo)),
       desconto: desconto,
       credito: kind === 'inf' ? credito : 0,
+      minimo: minimo == null ? 0 : minimo,
+      validade: validade,
+      limiteUso: limiteUso,
       ativa: body && (body.ativo === false || body.on === false) ? 0 : 1,
     },
   };
@@ -149,15 +170,17 @@ app.post('/api/admin/coupons', requireAdmin, function (req, res) {
   }
   code = code.toUpperCase();
   if (findCoupon(code)) return res.status(409).json({ erro: 'Este código de cupom já existe.' });
-  let senhaGerada = null;
-  db.prepare(
-    'INSERT INTO coupons (code, kind, nome, email, cidade, pix_chave, pix_tipo, desconto, credito, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(code, d.kind, d.nome, d.email, d.cidade, d.pix, d.pixTipo, d.desconto, d.credito, d.ativa);
   if (d.kind === 'inf' && d.email) {
     const senha = trimOrNull(req.body && (req.body.senha || req.body.pass));
     if (!senha || String(senha).length < 8) {
       return res.status(400).json({ erro: 'Para influenciador, informe a senha de acesso (mínimo 8 caracteres).' });
     }
+  }
+  db.prepare(
+    'INSERT INTO coupons (code, kind, nome, email, cidade, pix_chave, pix_tipo, desconto, credito, ativo, minimo, validade, limite_uso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(code, d.kind, d.nome, d.email, d.cidade, d.pix, d.pixTipo, d.desconto, d.credito, d.ativa, d.minimo, d.validade, d.limiteUso);
+  if (d.kind === 'inf' && d.email) {
+    const senha = trimOrNull(req.body && (req.body.senha || req.body.pass));
     const exists = db.prepare('SELECT id FROM influencers WHERE lower(email) = lower(?)').get(d.email);
     if (exists) {
       db.prepare('UPDATE influencers SET senha = ?, coupon_code = ?, ativo = 1 WHERE id = ?')
@@ -179,8 +202,8 @@ app.put('/api/admin/coupons/:code', requireAdmin, function (req, res) {
   if (parsed.erro) return res.status(400).json({ erro: parsed.erro });
   const d = parsed.data;
   db.prepare(
-    'UPDATE coupons SET kind = ?, nome = ?, email = ?, cidade = ?, pix_chave = ?, pix_tipo = ?, desconto = ?, credito = ?, ativo = ? WHERE code = ?'
-  ).run(d.kind, d.nome, d.email, d.cidade, d.pix, d.pixTipo, d.desconto, d.credito, d.ativa, atual.code);
+    'UPDATE coupons SET kind = ?, nome = ?, email = ?, cidade = ?, pix_chave = ?, pix_tipo = ?, desconto = ?, credito = ?, ativo = ?, minimo = ?, validade = ?, limite_uso = ? WHERE code = ?'
+  ).run(d.kind, d.nome, d.email, d.cidade, d.pix, d.pixTipo, d.desconto, d.credito, d.ativa, d.minimo, d.validade, d.limiteUso, atual.code);
   res.json({ cupom: couponOut(findCoupon(atual.code)) });
 });
 

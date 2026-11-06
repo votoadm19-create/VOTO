@@ -23,7 +23,12 @@ var HUBS = {};
 var FIN = {};
 var HUB_ID = {};
 function apiJSON(url, opts) {
-  return fetch(url, Object.assign({ headers: {} }, opts || {}))
+  var o = Object.assign({ headers: {} }, opts || {});
+  if (o.body && typeof o.body !== 'string') {
+    o.body = JSON.stringify(o.body);
+    o.headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, o)
     .then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (data) {
         if (!r.ok) throw new Error(data.erro || "Não foi possível concluir a ação.");
@@ -58,7 +63,7 @@ function mapOrders(rows) {
       id: o.id, hub: hubNameById(o.hub_id) || "Sem galpão", name: o.name || "Cliente",
       area: o.cidade || "", lines: lines, val: o.subtotal, taxa: o.frete || 0,
       desc: o.desconto || 0, total: o.total, out: "--", pay: "Pix", addr: "",
-      mins: 0, st: o.op_status || "novo", t: t,
+      mins: 0, st: o.op_status || "novo", t: t, criado_em: o.criado_em || "",
       perso: o.perso ? { i: -1, nivel: o.perso.nivel, desc: o.perso.desc, preco: o.perso.preco, nota: o.perso.nota || "" } : null,
     };
   });
@@ -413,29 +418,16 @@ var WD = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"
 var WDS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 var MES_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 var MES_DIAS = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-function hashStr(t) { var h = 7; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return Math.abs(h) + 1; }
 function scopeHubs() { return cityNow === "Todas" ? hubList() : [cityNow]; }
 var HOJE = new Date().getDate();
-function buildDaily(h) {
-  var H = HUBS[h];
-  var hoje = ORDERS.filter(function (o) { return o.hub === h; }).reduce(function (a, o) { return a + o.total; }, 0);
-  var pool = Math.max(0, fin(h).fat - hoje), rnd = rng(hashStr(h)), w = [], sum = 0, d;
-  for (d = 1; d < MES_DIAS; d++) {
-    var dow = new Date(new Date().getFullYear(), new Date().getMonth(), d).getDay();
-    var x = (dow === 0 ? 0.8 : dow === 6 ? 1.0 : 1.1) * (0.85 + 0.3 * d / 30) * (0.85 + 0.3 * rnd());
-    w.push(x); sum += x;
-  }
-  H.daily = w.map(function (x) { var rev = pool * x / sum, tk = 150 + rnd() * 40; return { rev: rev, ped: Math.round(rev / tk) }; });
-}
+var MES_ATUAL = String(new Date().getFullYear()) + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
 function dayOf(h, d) {
-  var H = HUBS[h], f = fin(h), rev, ped;
-  if (d === HOJE) {
-    var os = ORDERS.filter(function (o) { return o.hub === h; });
-    rev = os.reduce(function (a, o) { return a + o.total; }, 0); ped = os.length;
-  } else {
-    if (!H.daily) buildDaily(h);
-    rev = H.daily[d - 1].rev; ped = H.daily[d - 1].ped;
-  }
+  var f = fin(h);
+  var os = ORDERS.filter(function (o) {
+    return o.hub === h && o.criado_em && String(o.criado_em).slice(0, 7) === MES_ATUAL && Number(String(o.criado_em).slice(8, 10)) === d;
+  });
+  var rev = os.reduce(function (a, o) { return a + o.total; }, 0);
+  var ped = os.length;
   return { rev: rev, ped: ped, lucro: rev * f.margem / 100 };
 }
 function dayScope(d, onlyHub) {
@@ -745,9 +737,16 @@ document.addEventListener("click", function (e) {
     if (isNaN(preco) || preco <= 0) { setMsg("pf-msg", "Informe o preço de venda."); return; }
     var hubName = document.getElementById("pf-hub").value;
     var newCat = catKey(document.getElementById("pf-cat").value);
+    var firstImg = pending.filter(function (m) { return m.kind === "image" && m.data; })[0];
+    var fotoPromise = firstImg
+      ? apiJSON("/api/operacao/upload", { method: "POST", body: { dataUrl: firstImg.data } })
+          .then(function (up) { return up.url; })
+          .catch(function () { return ""; })
+      : Promise.resolve("");
+    fotoPromise.then(function (fotoUrl) {
     apiJSON("/api/operacao/products", {
       method: "POST",
-      body: { nome: nome, cat: newCat, preco: preco, estoque: Math.max(0, qtd), ativo: true },
+      body: { nome: nome, cat: newCat, preco: preco, estoque: Math.max(0, qtd), ativo: true, foto: fotoUrl || null },
     })
       .then(function (data) {
         var created = data.produto;
@@ -763,6 +762,7 @@ document.addEventListener("click", function (e) {
         render();
       })
       .catch(function (err4) { setMsg("pf-msg", err4.message || "Não foi possível cadastrar.", "bad"); });
+    });
     return;
   }
   if (d.cadd) { syncRows(); newRows.push({ nome: "", taxa: "" }); render(); return; }
@@ -875,16 +875,36 @@ document.addEventListener("change", function (e) {
   files.forEach(function (f) {
     var kind = kindOf(f);
     if (!kind) return;
+    if (kind === "image") {
+      var n = pending.filter(function (m) { return m.kind === "image"; }).length;
+      if (id === "pf-media" && n >= 8) { skipped++; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        if (id === "pf-media") {
+          pending.push({ kind: "image", url: String(reader.result), data: String(reader.result), name: f.name });
+          renderPending();
+        } else {
+          prod.fotos = prod.fotos || [];
+          if (prod.fotos.length < 8) prod.fotos.push(String(reader.result));
+          apiJSON("/api/operacao/upload", { method: "POST", body: { dataUrl: String(reader.result) } })
+            .then(function (up) {
+              return apiJSON("/api/operacao/products/" + encodeURIComponent(prod.id), {
+                method: "PUT",
+                body: { nome: prod.nome, cat: prod.catId || "material", preco: prod.preco, estoque: prod.estGlobal != null ? prod.estGlobal : 0, ativo: true, foto: up.url },
+              });
+            })
+            .then(function () { flash = { id: "ed-msg", text: "Foto da capa atualizada.", cls: "good" }; renderPlist(); })
+            .catch(function (err) { flash = { id: "ed-msg", text: err && err.message ? err.message : "Não foi possível salvar a foto.", cls: "bad" }; renderPlist(); });
+        }
+      };
+      reader.readAsDataURL(f);
+      return;
+    }
     var url = URL.createObjectURL(f);
     if (id === "pf-media") {
-      var n = pending.filter(function (m) { return m.kind === kind; }).length;
-      if (n >= (kind === "image" ? 8 : 2)) { skipped++; return; }
-      pending.push({ kind: kind, url: url, name: f.name });
-    } else {
-      prod.fotos = prod.fotos || []; prod.videos = prod.videos || [];
-      var arr = kind === "image" ? prod.fotos : prod.videos;
-      if (arr.length >= (kind === "image" ? 8 : 2)) { skipped++; return; }
-      arr.push(url);
+      var nv = pending.filter(function (m) { return m.kind === "video"; }).length;
+      if (nv >= 2) { skipped++; return; }
+      pending.push({ kind: "video", url: url, name: f.name });
     }
   });
   e.target.value = "";

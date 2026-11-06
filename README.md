@@ -19,10 +19,12 @@ Na primeira execução o banco `data/voto.db` é criado e os produtos iniciais s
 
 ## Acesso ao painel
 
-- Usuário padrão: `admin`
-- Senha padrão: `voto123`
+Na primeira execução (sem nenhum admin no banco), um usuário é criado:
 
-Para definir outro administrador inicial, rode na primeira vez:
+- Sem `ADMIN_USER`/`ADMIN_PASS` no `.env`: usuário `admin` com **senha aleatória gerada no boot** — ela aparece uma única vez no log do servidor. Copie na hora.
+- Com `ADMIN_USER`/`ADMIN_PASS` definidos, esses valores são usados.
+
+Na primeira vez, prefira definir no `.env` (veja `.env.example`):
 
 ```bash
 ADMIN_USER=seuUsuario ADMIN_PASS=suaSenha npm start
@@ -52,6 +54,13 @@ As alterações de produtos e configurações aparecem no site imediatamente ao 
 - Avaliação de produtos com nota e comentário
 - Cupom de desconto aplicado no carrinho e enviado no pedido
 - Mensagens de pedido no WhatsApp com dados do cliente, itens, subtotal, entrega e total
+
+## Operação
+
+- Saúde: `GET /api/health` → `{ ok, db }` (200/503) para monitorar e deploys.
+- Backup do banco: `npm run backup` (fazer checkpoint no WAL e copia com data em `data/backups/`, mantém 30 dias). Para restaurar: pare o servidor, copie o arquivo de volta para `data/voto.db`, apague `voto.db-wal`/`voto.db-shm` e suba de novo. Agende no cron/systemd.
+- Testes: `npm test` sobe o servidor num banco temporário (sem tocar em `data/`) e roda a suíte de fumaça.
+- Logins têm rate-limit simples em memória (10 tentativas/5 min por IP): em produções com múltiplas réplicas, use um gateway na frente.
 
 ## Estrutura
 
@@ -87,9 +96,7 @@ Projeto - VOTO/
 ├── imgs/logo/               # Logos | imgs/products/ (vazio)
 ├── data/                    # voto.db SQLite (gerado, ignorado no git)
 ├── uploads/                 # Imagens enviadas pelo painel (ignorado no git)
-├── database.js              # Pool PostgreSQL (só server.postgres.js)
-├── server.postgres.js       # Variante PostgreSQL/Neon (não é o npm start)
-├── schema.sql               # DDL PostgreSQL (inclui cupons/influenciadores/galpões)
+├── schema.sql               # DDL PostgreSQL de referência (a variante Neon foi removida; ver abaixo)
 └── package.json             # Node >=22.5, express + pg + dotenv
 ```
 
@@ -97,8 +104,8 @@ Fluxo: `public/*` → `fetch /api/*` → `src/routes/*` → `src/lib/*` → SQLi
 
 ## Cupons, influenciadores e operação
 
-Ver `public/README.md`. Resumo: tela inicial da loja tem atalhos **Influenciador** e **Cupons**; `/operacao` é restrito à equipe (admin ou papel `operacao`) e fica em atalho no painel admin — usuários de operação não veem o admin. Conta de demonstração (seed): `larissa@exemplo.com` / `voto1234` — **troque antes de ir ao ar**.
+Ver `public/README.md`. Resumo: tela inicial da loja tem atalhos **Influenciador** e **Cupons**; `/operacao` é restrito à equipe (admin ou papel `operacao`) e fica em atalho no painel admin — usuários de operação não veem o admin. A conta de demonstração (`larissa@exemplo.com`) **não é criada por padrão** — só em bancos novos com `VOTO_SEED_DEMO=1`.
 
 ## PostgreSQL
 
-`server.postgres.js` (com `database.js` + `schema.sql`) mantém a variante Neon para loja/admin. As rotas novas (cupons, influenciador, operação) vivem em `src/` (SQLite, `npm start`); o arquivo PostgreSQL ainda não foi espelhado — não use como fonte das rotas novas.
+A variante Neon (`server.postgres.js` + `database.js`) foi **removida** para não ter duas implementações divergentes da mesma API. Fonte única: `src/` (SQLite, `npm start`). `schema.sql` fica como referência de DDL caso queiram recriar um adaptador Postgres sobre `src/routes/*` no futuro.

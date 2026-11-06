@@ -8,6 +8,8 @@ const { checkPassword } = require('../lib/auth');
 const { PRODUCT_SELECT } = require('../lib/domain');
 const { productForStore } = require('../lib/domain');
 const { findCoupon } = require('../lib/domain');
+const { couponCheck } = require('../lib/domain');
+const { loginLimiter, registerLimiter } = require('../lib/rateLimit');
 const { hubForCidade } = require('../lib/domain');
 const { trimOrNull } = require('../lib/util');
 const { validNumber } = require('../lib/util');
@@ -17,7 +19,7 @@ const { saveDataUrl } = require('../lib/util');
 function register(app) {
 /* ---------- loja: clientes ---------- */
 
-app.post('/api/auth/register', function (req, res) {
+app.post('/api/auth/register', registerLimiter, function (req, res) {
   const nome = trimOrNull(req.body && req.body.nome);
   const email = trimOrNull(req.body && req.body.email);
   const telefone = trimOrNull(req.body && req.body.telefone);
@@ -57,7 +59,7 @@ app.post('/api/auth/register', function (req, res) {
   });
 });
 
-app.post('/api/auth/login', function (req, res) {
+app.post('/api/auth/login', loginLimiter, function (req, res) {
   const email = trimOrNull(req.body && req.body.email);
   const senha = req.body && req.body.senha;
   if (!email || !senha) {
@@ -181,8 +183,9 @@ app.post('/api/orders', requireCustomer, function (req, res) {
   let creditoStatus = null;
   if (body.cupom) {
     const coupon = findCoupon(body.cupom);
-    if (!coupon || coupon.ativo !== 1) {
-      return res.status(400).json({ erro: 'Cupom inválido ou pausado.' });
+    const couponErr = couponCheck(coupon, subtotal);
+    if (couponErr) {
+      return res.status(400).json({ erro: couponErr });
     }
     couponCode = coupon.code;
     desconto = Math.round(subtotal * (Number(coupon.desconto) || 0) * 100) / 100;
@@ -220,6 +223,13 @@ app.post('/api/orders', requireCustomer, function (req, res) {
       hub ? hub.id : null,
       opStatus
     );
+  itens.forEach(function (it) {
+    const pid = it.pid || null;
+    const qtd = validNumber(it.qtd) || 0;
+    if (pid && qtd > 0) {
+      db.prepare('UPDATE products SET estoque = MAX(estoque - ?, 0) WHERE id = ?').run(qtd, pid);
+    }
+  });
   if (hub) {
     const dec = db.prepare(
       'UPDATE hub_stock SET qtd = MAX(qtd - ?, 0) WHERE product_id = ? AND hub_id = ?'

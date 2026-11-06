@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "backup": "node scripts/backup.js",
+    "test": "node --test tests/smoke.test.js"
   },
   "engines": {
     "node": ">=22.5.0"

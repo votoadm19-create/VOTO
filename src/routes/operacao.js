@@ -5,6 +5,7 @@ const { equipeRow } = require('../lib/auth');
 const { getSession } = require('../lib/auth');
 const { PRODUCT_SELECT } = require('../lib/domain');
 const { productOut } = require('../lib/domain');
+const { adjustOrderStock } = require('../lib/domain');
 const { findCoupon } = require('../lib/domain');
 const { hubOut } = require('../lib/domain');
 const { readProductBody } = require('../lib/domain');
@@ -13,6 +14,7 @@ const { trimOrNull } = require('../lib/util');
 const { slugify } = require('../lib/util');
 const { validNumber } = require('../lib/util');
 const { safeJson } = require('../lib/util');
+const { saveDataUrl } = require('../lib/util');
 const path = require('path');
 const { ROOT } = require('../config');
 
@@ -219,6 +221,12 @@ app.get('/api/operacao/financeiro', requireEquipe, function (req, res) {
   });
 });
 
+app.post('/api/operacao/upload', requireEquipe, function (req, res) {
+  const saved = saveDataUrl(req.body && req.body.dataUrl, 8 * 1024 * 1024);
+  if (saved.erro) return res.status(saved.status || 400).json({ erro: saved.erro });
+  res.status(201).json({ url: saved.url });
+});
+
 app.get('/api/operacao/products', requireEquipe, function (req, res) {
   const rows = db.prepare(PRODUCT_SELECT + ' ORDER BY p.nome').all();
   res.json(rows.map(productOut));
@@ -294,39 +302,7 @@ app.put('/api/operacao/orders/:id', requireEquipe, function (req, res) {
     db.prepare(
       'UPDATE orders SET itens = ?, subtotal = ?, desconto = ?, credito = ?, total = ?, perso_json = ? WHERE id = ?'
     ).run(JSON.stringify(clean), subtotal, desconto, credito, total, persoJson, req.params.id);
-    if (order.hub_id) {
-      const before = {};
-      safeJson(order.itens, []).forEach(function (it) {
-        if (it && it.pid) before[it.pid] = (before[it.pid] || 0) + (Number(it.qtd) || 0);
-      });
-      const after = {};
-      clean.forEach(function (it) {
-        if (it.pid) after[it.pid] = (after[it.pid] || 0) + it.qtd;
-      });
-      const adj = db.prepare(
-        'UPDATE hub_stock SET qtd = MAX(qtd - ?, 0) WHERE product_id = ? AND hub_id = ?'
-      );
-      Object.keys(after).forEach(function (pid) {
-        const delta = after[pid] - (before[pid] || 0);
-        if (delta > 0) adj.run(delta, pid, order.hub_id);
-        else if (delta < 0) {
-          db.prepare('UPDATE hub_stock SET qtd = qtd + ? WHERE product_id = ? AND hub_id = ?').run(
-            -delta,
-            pid,
-            order.hub_id
-          );
-        }
-      });
-      Object.keys(before).forEach(function (pid) {
-        if (after[pid] == null) {
-          db.prepare('UPDATE hub_stock SET qtd = qtd + ? WHERE product_id = ? AND hub_id = ?').run(
-            before[pid],
-            pid,
-            order.hub_id
-          );
-        }
-      });
-    }
+    adjustOrderStock(order, safeJson(order.itens, []), clean);
   }
   if (!items && body.perso !== undefined) {
     let persoJson = null;

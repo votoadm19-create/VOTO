@@ -4,6 +4,8 @@ const { requireInfluenciador } = require('../lib/auth');
 const { getSession } = require('../lib/auth');
 const { startSession } = require('../lib/auth');
 const { checkPassword } = require('../lib/auth');
+const { hashPassword } = require('../lib/auth');
+const { loginLimiter, registerLimiter } = require('../lib/rateLimit');
 const { couponRules } = require('../lib/domain');
 const { findCoupon } = require('../lib/domain');
 const { couponOut } = require('../lib/domain');
@@ -33,8 +35,64 @@ function influencerOut(row) {
     pixTipo: row.pix_tipo || '',
     pixChave: row.pix_chave || '',
     code: row.coupon_code || '',
+    status: row.status || 'pendente',
+    criadoEm: row.criado_em || '',
   };
 }
+
+const PIX_TIPOS = ['cpf', 'email', 'telefone', 'aleatoria'];
+
+app.post('/api/influenciador/register', registerLimiter, function (req, res) {
+  const body = req.body || {};
+  const nome = trimOrNull(body.nome);
+  const email = trimOrNull(body.email);
+  const senha = body.senha;
+  const telefone = trimOrNull(body.telefone);
+  let cpf = trimOrNull(body.cpf);
+  if (cpf) cpf = cpf.replace(/\D/g, '');
+  const cidade = trimOrNull(body.cidade);
+  const rede = trimOrNull(body.rede);
+  const usuario = trimOrNull(body.usuario);
+  const seg = trimOrNull(body.seg);
+  const pixTipo = trimOrNull(body.pixTipo);
+  const pixChave = trimOrNull(body.pixChave);
+  if (!nome || !email || !senha) {
+    return res.status(400).json({ erro: 'Preencha nome, e-mail e senha.' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  }
+  if (String(senha).length < 8) {
+    return res.status(400).json({ erro: 'A senha precisa ter pelo menos 8 caracteres.' });
+  }
+  if (cpf && cpf.length !== 11) {
+    return res.status(400).json({ erro: 'O CPF precisa ter 11 dígitos.' });
+  }
+  if (pixTipo && PIX_TIPOS.indexOf(pixTipo) < 0) {
+    return res.status(400).json({ erro: 'Tipo de chave Pix inválido.' });
+  }
+  const exists = db.prepare('SELECT id FROM influencers WHERE lower(email) = lower(?)').get(email);
+  if (exists) {
+    return res.status(409).json({ erro: 'Este e-mail já tem um cadastro de influenciador.' });
+  }
+  if (cpf) {
+    const cpfExists = db.prepare('SELECT id FROM influencers WHERE cpf = ?').get(cpf);
+    if (cpfExists) {
+      return res.status(409).json({ erro: 'Este CPF já tem um cadastro de influenciador.' });
+    }
+  }
+  const info = db
+    .prepare(
+      'INSERT INTO influencers (nome, email, senha, telefone, cpf, cidade, rede, usuario_rede, seguidores, pix_tipo, pix_chave, coupon_code, ativo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, \'pendente\')'
+    )
+    .run(nome, email.toLowerCase(), hashPassword(String(senha)), telefone, cpf, cidade, rede, usuario, seg, pixTipo, pixChave);
+  res.status(201).json({
+    ok: true,
+    id: Number(info.lastInsertRowid),
+    status: 'pendente',
+    mensagem: 'Cadastro enviado! A equipe Voto vai analisar e, se aprovado, ativar o seu acesso.',
+  });
+});
 
 function influencerDashboard(inf) {
   const coupon = inf.coupon_code ? findCoupon(inf.coupon_code) : null;
@@ -70,13 +128,23 @@ function influencerDashboard(inf) {
   };
 }
 
-app.post('/api/influenciador/login', function (req, res) {
+app.post('/api/influenciador/login', loginLimiter, function (req, res) {
   const email = trimOrNull(req.body && req.body.email);
   const senha = req.body && req.body.senha;
   if (!email || !senha) return res.status(400).json({ erro: 'Informe e-mail e senha.' });
   const inf = db.prepare('SELECT * FROM influencers WHERE lower(email) = lower(?)').get(email);
-  if (!inf || inf.ativo !== 1 || !checkPassword(senha, inf.senha)) {
+  if (!inf || !checkPassword(senha, inf.senha)) {
     return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+  }
+  const status = inf.status || 'pendente';
+  if (status !== 'ativo') {
+    const msg =
+      status === 'pendente'
+        ? 'Seu cadastro está em análise. Aguarde a aprovação da equipe Voto.'
+        : status === 'rejeitado'
+          ? 'Este cadastro não foi aprovado. Fale com a equipe Voto para mais informações.'
+          : 'Seu acesso ao portal está pausado. Fale com a equipe Voto.';
+    return res.status(403).json({ erro: msg });
   }
   startSession(res, 'influenciador', inf.id);
   res.json({ influenciador: influencerOut(inf) });
@@ -94,12 +162,14 @@ app.get('/api/influenciador/me', function (req, res) {
   if (!session || session.tipo !== 'influenciador') return res.json({ influenciador: null });
   const inf = db
     .prepare(
-      'SELECT id, nome, email, telefone, cpf, cidade, rede, usuario_rede, seguidores, pix_tipo, pix_chave, coupon_code, ativo FROM influencers WHERE id = ?'
+      'SELECT id, nome, email, telefone, cpf, cidade, rede, usuario_rede, seguidores, pix_tipo, pix_chave, coupon_code, ativo, status, criado_em FROM influencers WHERE id = ?'
     )
     .get(session.user_id);
+  const liberado =
+    Boolean(inf) && inf.ativo === 1 && (inf.status || 'ativo') === 'ativo';
   res.json({
-    influenciador: inf && inf.ativo === 1 ? influencerOut(inf) : null,
-    dados: inf && inf.ativo === 1 ? influencerDashboard(inf) : null,
+    influenciador: liberado ? influencerOut(inf) : null,
+    dados: liberado ? influencerDashboard(inf) : null,
   });
 });
 

@@ -20,6 +20,16 @@ function createApp() {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '12mb' }));
 
+  app.get('/api/health', function (req, res) {
+    try {
+      const { db } = require('./db/sqlite');
+      db.prepare('SELECT 1 AS ok').get();
+      res.json({ ok: true, db: 'ok', agora: new Date().toISOString() });
+    } catch (err) {
+      res.status(503).json({ ok: false, db: 'erro', erro: 'Banco indisponível.' });
+    }
+  });
+
   app.get('/', function (req, res) {
     res.sendFile(path.join(PUBLIC_DIR, 'store', 'index.html'));
   });
